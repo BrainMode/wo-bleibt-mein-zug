@@ -51,7 +51,7 @@ export const bahnTools = {
 
   planJourney: tool({
     description:
-      'Sucht Zugverbindungen von A nach B inklusive Umstiegen, Verspätungen und Warnungen. Benötigt die Bahnhofs-IDs aus searchStations.',
+      'Sucht Zugverbindungen von A nach B inklusive Umstiegen, Verspätungen, Warnungen und Ausstattung pro Zug (amenities: Bordrestaurant, Fahrradmitnahme, WLAN …). Benötigt die Bahnhofs-IDs aus searchStations. Für eine bestimmte Reisezeit departure/arrival als ISO-Zeitpunkt setzen.',
     inputSchema: z.object({
       fromId: z.string().describe('id des Start-Bahnhofs'),
       toId: z.string().describe('id des Ziel-Bahnhofs'),
@@ -64,7 +64,7 @@ export const bahnTools = {
 
   trackTrain: tool({
     description:
-      'Verfolgt einen konkreten Zug entlang seiner Route: alle Halte mit Ist-Zeiten, Verspätung pro Halt, Gleisen und Ausfällen. Nutzt die tripId aus getDepartures oder planJourney. Ideal für "Wo bleibt mein Zug?".',
+      'Verfolgt einen konkreten Zug entlang seiner Route: alle Halte mit Ist-Zeiten, Verspätung pro Halt, Gleisen, Ausfällen und der Ausstattung (amenities: Bordrestaurant, Fahrradmitnahme, WLAN …). Nutzt die tripId aus getDepartures oder planJourney. Ideal für "Wo bleibt mein Zug?" und "Gibt es ein Bordrestaurant?".',
     inputSchema: z.object({
       tripId: z.string().describe('Die tripId eines Zuges aus getDepartures oder planJourney'),
     }),

@@ -22,21 +22,63 @@ export function delayMin(delaySeconds: number | null | undefined): number | null
   return Math.round(delaySeconds / 60);
 }
 
-type Remark = { type?: string; text?: string; summary?: string };
+type Remark = { type?: string; code?: string; text?: string; summary?: string };
 
-/** Extrahiert die relevantesten Meldungen (Warnungen/Störungen) als kurze Strings. */
-export function remarkTexts(remarks: unknown, max = 2): string[] {
+/** Extrahiert Warnungen/Störungen (Verspätungsgründe, Ausfälle, Ersatzverkehr). */
+export function remarkTexts(remarks: unknown, max = 3): string[] {
   if (!Array.isArray(remarks)) return [];
   const seen = new Set<string>();
   const out: string[] = [];
   for (const r of remarks as Remark[]) {
-    // Reine Ausstattungs-Hinweise (Klimaanlage, Fahrradmitnahme …) sind Rauschen.
+    // Nur echte Störungs-/Statusmeldungen — Ausstattung wird separat behandelt.
     if (r.type && !['warning', 'status'].includes(r.type)) continue;
     const text = (r.summary || r.text || '').trim();
     if (text && !seen.has(text)) {
       seen.add(text);
       out.push(text);
       if (out.length >= max) break;
+    }
+  }
+  return out;
+}
+
+// Ausstattungs-Codes (type: 'hint') → saubere deutsche Labels. Diese stecken in
+// den remarks der Züge/Verbindungen und beantworten Fragen wie „Gibt es ein
+// Bordrestaurant?" oder „Kann ich mein Fahrrad mitnehmen?".
+const AMENITY_LABELS: Record<string, string> = {
+  'on-board-restaurant': 'Bordrestaurant',
+  'board-restaurant': 'Bordrestaurant',
+  'on-board-bistro': 'Bordbistro',
+  'board-bistro': 'Bordbistro',
+  'on-board-service': 'Bordservice am Platz',
+  'komfort-checkin': 'Komfort Check-in',
+  'bicycle-conveyance': 'Fahrradmitnahme möglich',
+  'bicycle-conveyance-reservation': 'Fahrradmitnahme (reservierungspflichtig)',
+  'bicycle-conveyance-required-reservation': 'Fahrradmitnahme (reservierungspflichtig)',
+  'air-conditioned': 'Klimaanlage',
+  'air-conditioning': 'Klimaanlage',
+  wifi: 'WLAN',
+  wlan: 'WLAN',
+  'power-sockets': 'Steckdosen am Platz',
+  'wheelchair-accessible': 'Rollstuhlgerecht',
+  'boarding-aid': 'Ein-/Ausstiegshilfe',
+  'barrier-free': 'Barrierefrei',
+  'quiet-zone': 'Ruhebereich',
+  'family-zone': 'Familienbereich',
+  'family-area': 'Familienbereich',
+};
+
+/** Extrahiert Ausstattungs-Merkmale eines Zuges (Bordrestaurant, Fahrrad, WLAN …). */
+export function amenityTexts(remarks: unknown): string[] {
+  if (!Array.isArray(remarks)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const r of remarks as Remark[]) {
+    if (r.type !== 'hint' || !r.code) continue;
+    const label = AMENITY_LABELS[r.code];
+    if (label && !seen.has(label)) {
+      seen.add(label);
+      out.push(label);
     }
   }
   return out;

@@ -6,7 +6,7 @@
 // zurück, damit ein API-Ausfall nicht den Antwort-Stream crasht — das Modell
 // kann die Fehlermeldung dem Nutzer erklären.
 import { bahn } from './client';
-import { formatStation, formatBoardEntry, hhmm, delayMin, remarkTexts } from './format';
+import { formatStation, formatBoardEntry, hhmm, delayMin, remarkTexts, amenityTexts } from './format';
 
 const API_ERROR = {
   error:
@@ -131,6 +131,7 @@ export async function planJourney(fromId: string, toId: string, opts: JourneyOpt
           arr: hhmm(l.arrival),
           arrDelayMin: delayMin(l.arrivalDelay),
           tripId: l.tripId ?? null,
+          amenities: amenityTexts(l.remarks),
         })),
         warnings: remarkTexts(j.remarks, 3),
       };
@@ -174,6 +175,7 @@ export async function trackTrain(tripId: string) {
       direction: trip.direction ?? '?',
       currentDelayMin: delayMin(trip.departureDelay ?? trip.arrivalDelay),
       cancelled: Boolean(trip.cancelled),
+      amenities: amenityTexts(trip.remarks),
       stops: (trip.stopovers ?? []).map((s) => ({
         name: s.stop?.name ?? '?',
         arr: hhmm(s.arrival ?? s.plannedArrival),
