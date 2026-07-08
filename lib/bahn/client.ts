@@ -12,9 +12,18 @@ import { profile as dbnavProfile } from 'db-vendo-client/p/dbnav/index.js';
 // dieses Modul wird von actions.ts (und damit vor jedem Tool-Call) importiert.
 // Gilt genauso auf Vercel, weil die Serverless Functions dieselbe Node-Runtime
 // nutzen. Ohne diesen Fix liefert die App in Produktion nur OPS_BLOCKED-Fehler.
-const ciphers = tls.DEFAULT_CIPHERS.split(':');
-if (ciphers.length > 3) {
-  tls.DEFAULT_CIPHERS = [ciphers[2], ciphers[1], ciphers[0], ...ciphers.slice(3)].join(':');
+//
+// WICHTIG: idempotent halten. tls.DEFAULT_CIPHERS ist ein prozessweiter Wert.
+// Wird dieses Modul erneut ausgewertet (Next.js Hot-Reload, doppeltes Bundling),
+// würde eine zweite Permutation die bereits permutierte Liste erneut umsortieren
+// → wieder ein geblockter Fingerprint. Ein globales Flag verhindert das.
+const tlsGlobal = globalThis as unknown as { __bahnTlsPatched?: boolean };
+if (!tlsGlobal.__bahnTlsPatched) {
+  const ciphers = tls.DEFAULT_CIPHERS.split(':');
+  if (ciphers.length > 3) {
+    tls.DEFAULT_CIPHERS = [ciphers[2], ciphers[1], ciphers[0], ...ciphers.slice(3)].join(':');
+  }
+  tlsGlobal.__bahnTlsPatched = true;
 }
 
 // Realistischer Browser-User-Agent (das dbnav-Profil erwartet einen).

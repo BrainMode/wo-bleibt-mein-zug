@@ -102,12 +102,15 @@ type Leg = {
 /** Verbindungssuche A→B mit Umstiegen. */
 export async function planJourney(fromId: string, toId: string, opts: JourneyOpts = {}) {
   try {
-    const res = await bahn.journeys(fromId, toId, {
-      results: 3,
-      stopovers: false,
-      departure: opts.departure ? new Date(opts.departure) : undefined,
-      arrival: opts.arrival ? new Date(opts.arrival) : undefined,
-    });
+    // db-vendo behandelt departure und arrival als sich gegenseitig ausschließend
+    // — schon das bloße Vorhandensein beider Schlüssel (auch als undefined) löst
+    // einen Fehler aus. Deshalb genau EINEN Zeitparameter setzen (departure hat
+    // Vorrang), sonst keinen.
+    const journeyOpts: Record<string, unknown> = { results: 3, stopovers: false };
+    if (opts.departure) journeyOpts.departure = new Date(opts.departure);
+    else if (opts.arrival) journeyOpts.arrival = new Date(opts.arrival);
+
+    const res = await bahn.journeys(fromId, toId, journeyOpts);
     const journeys = (res.journeys ?? []).map((raw: unknown) => {
       const j = raw as { legs?: Leg[]; remarks?: unknown };
       const legs = (j.legs ?? []).filter((l) => !l.walking);
