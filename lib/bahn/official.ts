@@ -13,6 +13,7 @@
 // defensiv (Optional Chaining, tolerante Feldzugriffe).
 
 import { cached } from '../cache';
+import { searchStations } from './actions';
 
 const MARKET = 'https://apis.deutschebahn.com/db-api-marketplace/apis';
 const STADA_BASE = `${MARKET}/station-data/v2`;
@@ -69,6 +70,56 @@ type StadaStation = {
   [key: string]: unknown;
 };
 
+async function stadaSearch(term: string): Promise<StadaStation[]> {
+  // StaDa verlangt Wildcards (*Begriff*) und strikte Teilstring-Treffer.
+  const data = await dbFetch<{ result?: StadaStation[] }>(
+    `${STADA_BASE}/stations?searchstring=${encodeURIComponent(`*${term}*`)}`,
+  ).catch(() => ({ result: [] as StadaStation[] }));
+  return data.result ?? [];
+}
+
+/**
+ * Findet einen StaDa-Bahnhof robust gegen Schreibweisen (Umlaute, Klammern wie
+ * „Frankfurt(Main)Hbf", Abkürzungen). Strategie: Namen zuerst über db-vendo
+ * kanonisieren (fuzzy → liefert EVA-Nummer), dann den StaDa-Treffer per EVA
+ * matchen. Fällt db-vendo aus, direkte StaDa-Suche als Fallback.
+ */
+async function findStadaStation(name: string): Promise<StadaStation | null> {
+  const q = name.trim();
+
+  // 1) Kanonisieren über db-vendo → EVA + sauberer Name.
+  let eva: number | null = null;
+  let canon = q;
+  try {
+    const sr = await searchStations(q);
+    const st0 = 'stations' in sr ? sr.stations[0] : undefined;
+    if (st0) {
+      eva = Number(st0.id) || null;
+      canon = st0.name || q;
+    }
+  } catch {
+    // db-vendo nicht erreichbar → direkter StaDa-Weg unten.
+  }
+
+  // 2) StaDa mit dem Kernbegriff (erstes Wort, Klammern entfernt) suchen …
+  const token = canon.replace(/\(.*?\)/g, ' ').split(/[\s,]+/)[0] || q;
+  const results = await stadaSearch(token);
+
+  // … und per EVA-Nummer den exakten Bahnhof herauspicken.
+  if (eva && results.length) {
+    const byEva = results.find((r) => (r.evaNumbers ?? []).some((e) => e.number === eva));
+    if (byEva) return byEva;
+  }
+
+  // 3) Fallbacks ohne EVA-Match: exakter Name, sonst kürzester Name.
+  const pool = results.length ? results : await stadaSearch(q);
+  if (!pool.length) return null;
+  const lower = canon.toLowerCase();
+  const exact = pool.find((r) => (r.name ?? '').toLowerCase() === lower);
+  if (exact) return exact;
+  return [...pool].sort((a, b) => (a.name?.length ?? 99) - (b.name?.length ?? 99))[0];
+}
+
 /**
  * Bahnhofs-Ausstattung per StaDa. Liefert, was ein Bahnhof bietet
  * (Toiletten, DB Lounge, WLAN, Parken …) und die stationNumber für FaSta.
@@ -77,10 +128,7 @@ export async function stationFacilities(name: string) {
   if (!hasKeys()) return NOT_CONFIGURED;
   return cached(`stada:${name.trim().toLowerCase()}`, 86_400, async () => {
     try {
-      const data = await dbFetch<{ result?: StadaStation[] }>(
-        `${STADA_BASE}/stations?searchstring=*${encodeURIComponent(name)}*&limit=1`,
-      );
-      const st = data.result?.[0];
+      const st = await findStadaStation(name);
       if (!st) return { found: false, hint: `Kein Bahnhof namens "${name}" gefunden.` };
       const features = STADA_FEATURES.filter(([keys]) => keys.some((k) => truthy(st[k]))).map(
         ([, label]) => label,
