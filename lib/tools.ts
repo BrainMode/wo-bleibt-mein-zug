@@ -8,6 +8,7 @@ import {
   trackTrain,
   nearbyStations,
 } from './bahn/actions';
+import { stationFacilities, facilityStatus } from './bahn/official';
 
 // AI-SDK-v7-Tools. WICHTIG: `inputSchema` (nicht mehr `parameters` wie in v4).
 // Alle execute-Funktionen delegieren an die puren Actions in lib/bahn/actions.ts,
@@ -79,6 +80,24 @@ export const bahnTools = {
       tripId: z.string().describe('Die tripId eines Zuges aus getDepartures oder planJourney'),
     }),
     execute: async ({ tripId }) => trackTrain(tripId),
+  }),
+
+  stationFacilities: tool({
+    description:
+      'Ausstattung eines Bahnhofs (offizielle DB-Daten): öffentliche Toiletten, DB Lounge, WLAN, Parken, Schließfächer, stufenfreier Zugang, Reisezentrum usw. Für Fragen wie „Gibt es am Bahnhof X Toiletten / eine DB Lounge / Parkplätze?".',
+    inputSchema: z.object({
+      name: z.string().describe('Name des Bahnhofs, z.B. "Köln Hbf"'),
+    }),
+    execute: async ({ name }) => stationFacilities(name),
+  }),
+
+  facilityStatus: tool({
+    description:
+      'Live-Status der Aufzüge und Rolltreppen eines Bahnhofs (offizielle DB-FaSta-Daten): welche sind in Betrieb, welche außer Betrieb. Für Fragen wie „Funktioniert der Aufzug am Bahnhof X?".',
+    inputSchema: z.object({
+      name: z.string().describe('Name des Bahnhofs, z.B. "Hagen Hbf"'),
+    }),
+    execute: async ({ name }) => facilityStatus(name),
   }),
 };
 

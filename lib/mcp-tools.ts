@@ -7,6 +7,7 @@ import {
   trackTrain,
   nearbyStations,
 } from './bahn/actions';
+import { stationFacilities, facilityStatus } from './bahn/official';
 
 type McpServer = {
   registerTool: (
@@ -107,5 +108,27 @@ export function registerBahnMcpTools(server: McpServer) {
       inputSchema: { tripId: z.string().describe('tripId aus getDepartures oder planJourney') },
     },
     async ({ tripId }) => asText(await trackTrain(tripId as string)),
+  );
+
+  server.registerTool(
+    'stationFacilities',
+    {
+      title: 'Bahnhofs-Ausstattung',
+      description:
+        'Ausstattung eines Bahnhofs (offizielle DB-Daten): Toiletten, DB Lounge, WLAN, Parken, Schließfächer, stufenfreier Zugang …',
+      inputSchema: { name: z.string().describe('Bahnhofsname, z.B. "Köln Hbf"') },
+    },
+    async ({ name }) => asText(await stationFacilities(name as string)),
+  );
+
+  server.registerTool(
+    'facilityStatus',
+    {
+      title: 'Aufzug-/Rolltreppen-Status',
+      description:
+        'Live-Status der Aufzüge und Rolltreppen eines Bahnhofs (DB-FaSta): in Betrieb / außer Betrieb.',
+      inputSchema: { name: z.string().describe('Bahnhofsname, z.B. "Hagen Hbf"') },
+    },
+    async ({ name }) => asText(await facilityStatus(name as string)),
   );
 }
