@@ -5,7 +5,7 @@
 // Jede Funktion fängt db-vendo-Fehler ab und gibt im Fehlerfall { error }
 // zurück, damit ein API-Ausfall nicht den Antwort-Stream crasht — das Modell
 // kann die Fehlermeldung dem Nutzer erklären.
-import { bahn } from './client';
+import { getClient, rotateClient } from './client';
 import { formatStation, formatBoardEntry, hhmm, delayMin, remarkTexts, amenityTexts } from './format';
 
 const API_ERROR = {
@@ -18,17 +18,45 @@ function logError(fn: string, err: unknown) {
   console.warn(`[bahn:${fn}]`, msg);
 }
 
+function isBlockError(err: unknown): boolean {
+  const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  return /ops_blocked|forbidden|403|452|unknown|timeout|network/.test(msg);
+}
+
+type BahnClient = ReturnType<typeof getClient>;
+
+/**
+ * Führt einen db-vendo-Aufruf aus und wiederholt ihn bei einem Fingerprint-/
+ * Block-Fehler auf einer ANDEREN Cipher-Variante (anderer TLS-Fingerprint).
+ * Das entblockt in der Praxis Requests aus geflaggten (Datacenter-)IPs.
+ */
+async function withRetry<T>(fn: string, call: (c: BahnClient) => Promise<T>, attempts = 4): Promise<T> {
+  let lastErr: unknown;
+  for (let i = 0; i < attempts; i++) {
+    try {
+      return await call(i === 0 ? getClient() : rotateClient());
+    } catch (err) {
+      lastErr = err;
+      if (!isBlockError(err)) throw err;
+      logError(`${fn}:retry${i}`, err);
+    }
+  }
+  throw lastErr;
+}
+
 export type StationResult = { stations: ReturnType<typeof formatStation>[] } | typeof API_ERROR;
 
 /** Sucht Bahnhöfe/Haltestellen nach Name. Liefert IDs für alle anderen Tools. */
 export async function searchStations(query: string): Promise<StationResult> {
   try {
-    const results = await bahn.locations(query, {
-      results: 6,
-      stops: true,
-      addresses: false,
-      poi: false,
-    });
+    const results = await withRetry('searchStations', (c) =>
+      c.locations(query, {
+        results: 6,
+        stops: true,
+        addresses: false,
+        poi: false,
+      }),
+    );
     return { stations: (results as unknown[]).map((s) => formatStation(s as never)) };
   } catch (err) {
     logError('searchStations', err);
@@ -41,11 +69,13 @@ type BoardOpts = { when?: string; towards?: string };
 /** Abfahrtstafel eines Bahnhofs. `towards` filtert client-seitig nach Richtung. */
 export async function getDepartures(stationId: string, opts: BoardOpts = {}) {
   try {
-    const res = await bahn.departures(stationId, {
-      duration: 60,
-      results: 14,
-      when: opts.when ? new Date(opts.when) : undefined,
-    });
+    const res = await withRetry('getDepartures', (c) =>
+      c.departures(stationId, {
+        duration: 60,
+        results: 14,
+        when: opts.when ? new Date(opts.when) : undefined,
+      }),
+    );
     let entries = (res.departures ?? []).map((d: unknown) => formatBoardEntry(d as never, 'departure'));
     if (opts.towards) {
       const needle = opts.towards.toLowerCase();
@@ -63,11 +93,13 @@ export async function getDepartures(stationId: string, opts: BoardOpts = {}) {
 /** Ankunftstafel eines Bahnhofs. */
 export async function getArrivals(stationId: string, opts: BoardOpts = {}) {
   try {
-    const res = await bahn.arrivals(stationId, {
-      duration: 60,
-      results: 14,
-      when: opts.when ? new Date(opts.when) : undefined,
-    });
+    const res = await withRetry('getArrivals', (c) =>
+      c.arrivals(stationId, {
+        duration: 60,
+        results: 14,
+        when: opts.when ? new Date(opts.when) : undefined,
+      }),
+    );
     let entries = (res.arrivals ?? []).map((d: unknown) => formatBoardEntry(d as never, 'arrival'));
     if (opts.towards) {
       const needle = opts.towards.toLowerCase();
@@ -110,9 +142,9 @@ export async function planJourney(fromId: string, toId: string, opts: JourneyOpt
     if (opts.departure) journeyOpts.departure = new Date(opts.departure);
     else if (opts.arrival) journeyOpts.arrival = new Date(opts.arrival);
 
-    const res = await bahn.journeys(fromId, toId, journeyOpts);
+    const res = await withRetry('planJourney', (c) => c.journeys(fromId, toId, journeyOpts));
     const journeys = (res.journeys ?? []).map((raw: unknown) => {
-      const j = raw as { legs?: Leg[]; remarks?: unknown };
+      const j = raw as { legs?: Leg[]; remarks?: unknown; price?: { amount?: number; currency?: string } };
       const legs = (j.legs ?? []).filter((l) => !l.walking);
       const first = legs[0];
       const last = legs[legs.length - 1];
@@ -122,6 +154,7 @@ export async function planJourney(fromId: string, toId: string, opts: JourneyOpt
         arrival: hhmm(last?.arrival),
         arrivalDelayMin: delayMin(last?.arrivalDelay),
         transfers: Math.max(0, legs.length - 1),
+        priceFrom: j.price?.amount != null ? `${j.price.amount.toFixed(2)} ${j.price.currency ?? 'EUR'}` : null,
         legs: legs.map((l) => ({
           line: l.line?.name ?? '?',
           direction: l.direction ?? '?',
@@ -162,7 +195,7 @@ type Stopover = {
 /** Live-Fahrtverlauf eines konkreten Zuges (Kern-Feature: „Wo bleibt mein Zug?"). */
 export async function trackTrain(tripId: string) {
   try {
-    const res = await bahn.trip(tripId, { stopovers: true });
+    const res = await withRetry('trackTrain', (c) => c.trip(tripId, { stopovers: true }));
     const t = (res as { trip?: unknown }).trip ?? res;
     const trip = t as {
       line?: { name?: string };

@@ -51,7 +51,7 @@ export const bahnTools = {
 
   planJourney: tool({
     description:
-      'Sucht Zugverbindungen von A nach B inklusive Umstiegen, Verspätungen, Warnungen und Ausstattung pro Zug (amenities: Bordrestaurant, Fahrradmitnahme, WLAN …). Benötigt die Bahnhofs-IDs aus searchStations. Für eine bestimmte Reisezeit departure/arrival als ISO-Zeitpunkt setzen.',
+      'Sucht Zugverbindungen von A nach B inklusive Umstiegen, Verspätungen, Warnungen, Sparpreis (priceFrom, „ab X EUR") und Ausstattung pro Zug (amenities: Bordrestaurant, Fahrradmitnahme, WLAN …). Benötigt die Bahnhofs-IDs aus searchStations. Für eine bestimmte Reisezeit departure/arrival als ISO-Zeitpunkt setzen.',
     inputSchema: z.object({
       fromId: z.string().describe('id des Start-Bahnhofs'),
       toId: z.string().describe('id des Ziel-Bahnhofs'),
