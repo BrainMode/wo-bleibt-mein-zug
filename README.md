@@ -8,7 +8,7 @@ Frag in normalem Deutsch nach Abfahrten, Verspätungen, Gleisen und Verbindungen
 
 …und die KI sucht den Bahnhof, ruft die Abfahrtstafel ab, findet den passenden Zug und sagt dir, wo er gerade steht und wie viel Verspätung er hat.
 
-**Live-Demo:** _(nach Deployment hier eintragen)_
+**Live-Demo:** <https://wo-bleibt-mein-zug.vercel.app>
 
 ---
 
