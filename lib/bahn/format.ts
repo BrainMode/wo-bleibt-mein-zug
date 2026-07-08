@@ -1,0 +1,110 @@
+// Wandelt die (großen, verschachtelten) db-vendo-Antworten in kompakte,
+// LLM-freundliche Objekte um. Ziele:
+//  - Zeiten als "HH:mm" (Europe/Berlin) statt ISO+Offset → weniger Tokens,
+//    und das Modell rechnet Verspätungen nicht selbst falsch aus.
+//  - Verspätung explizit als delayMin (Minuten, gerundet).
+//  - Nur Felder, die der Chatbot für eine Antwort braucht.
+
+const TZ = 'Europe/Berlin';
+
+export function hhmm(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+  return new Date(iso).toLocaleTimeString('de-DE', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: TZ,
+  });
+}
+
+/** delay ist in Sekunden; wir liefern gerundete Minuten (null wenn unbekannt). */
+export function delayMin(delaySeconds: number | null | undefined): number | null {
+  if (delaySeconds == null) return null;
+  return Math.round(delaySeconds / 60);
+}
+
+type Remark = { type?: string; text?: string; summary?: string };
+
+/** Extrahiert die relevantesten Meldungen (Warnungen/Störungen) als kurze Strings. */
+export function remarkTexts(remarks: unknown, max = 2): string[] {
+  if (!Array.isArray(remarks)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const r of remarks as Remark[]) {
+    // Reine Ausstattungs-Hinweise (Klimaanlage, Fahrradmitnahme …) sind Rauschen.
+    if (r.type && !['warning', 'status'].includes(r.type)) continue;
+    const text = (r.summary || r.text || '').trim();
+    if (text && !seen.has(text)) {
+      seen.add(text);
+      out.push(text);
+      if (out.length >= max) break;
+    }
+  }
+  return out;
+}
+
+type StationLike = { id?: string; name?: string; products?: unknown };
+
+/** products kommt als Objekt-Map ({regional:true,…}) oder Array — normalisieren. */
+export function productList(products: unknown): string[] {
+  if (!products) return [];
+  if (Array.isArray(products)) return products as string[];
+  return Object.entries(products as Record<string, unknown>)
+    .filter(([, v]) => v)
+    .map(([k]) => k);
+}
+
+export function formatStation(s: StationLike) {
+  return {
+    id: s.id ?? '',
+    name: s.name ?? '',
+    products: productList(s.products),
+  };
+}
+
+type Arrival = {
+  line?: { name?: string };
+  direction?: string;
+  provenance?: string;
+  when?: string;
+  plannedWhen?: string;
+  delay?: number | null;
+  platform?: string | null;
+  plannedPlatform?: string | null;
+  cancelled?: boolean;
+  tripId?: string;
+  remarks?: unknown;
+};
+
+export type BoardEntry = {
+  line: string;
+  direction?: string;
+  origin?: string;
+  plannedTime: string | null;
+  time: string | null;
+  delayMin: number | null;
+  platform: string | null;
+  platformChanged: boolean;
+  cancelled: boolean;
+  tripId: string | null;
+  remarks: string[];
+};
+
+/** Gemeinsame Formatierung für Abfahrten und Ankünfte. */
+export function formatBoardEntry(d: Arrival, kind: 'departure' | 'arrival'): BoardEntry {
+  return {
+    line: d.line?.name ?? '?',
+    // Bei Abfahrten: wohin. Bei Ankünften: woher (provenance).
+    ...(kind === 'departure'
+      ? { direction: d.direction ?? '?' }
+      : { origin: d.provenance ?? '?' }),
+    plannedTime: hhmm(d.plannedWhen),
+    time: hhmm(d.when),
+    delayMin: delayMin(d.delay),
+    platform: d.platform ?? null,
+    platformChanged:
+      d.plannedPlatform != null && d.platform != null && d.plannedPlatform !== d.platform,
+    cancelled: Boolean(d.cancelled),
+    tripId: d.tripId ?? null,
+    remarks: remarkTexts(d.remarks),
+  };
+}
