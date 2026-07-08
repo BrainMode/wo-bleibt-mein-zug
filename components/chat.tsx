@@ -108,7 +108,16 @@ export function Chat() {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Open Source auf GitHub
+            Open Source
+          </a>{' '}
+          · ein Projekt von{' '}
+          <a
+            href="https://wdc-gmbh.ch"
+            className="underline hover:text-emerald-200/60"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            WDC
           </a>
         </p>
       </form>
