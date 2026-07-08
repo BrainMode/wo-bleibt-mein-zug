@@ -87,10 +87,10 @@ export function Chat() {
                 submit(input);
               }
             }}
-            rows={1}
+            rows={2}
             maxLength={1000}
             placeholder="z.B. Wann fährt der nächste Zug von Iserlohn nach Hagen?"
-            className="max-h-40 flex-1 resize-none bg-transparent px-2 py-1.5 text-[15px] text-emerald-50 placeholder:text-emerald-200/30 focus:outline-none"
+            className="max-h-40 min-h-[3rem] flex-1 resize-none bg-transparent px-2 py-1.5 text-[15px] leading-snug text-emerald-50 placeholder:text-emerald-200/30 focus:outline-none"
           />
           <button
             type="submit"
