@@ -7,11 +7,10 @@
 const MODERATION_MODEL = 'mistral-moderation-2603';
 const MODERATION_URL = 'https://api.mistral.ai/v1/moderations';
 
-// Kategorien, bei denen wir hart blocken. Bewusst NICHT dabei: pii, health,
-// financial, law — die lösen bei harmlosen Reisefragen zu leicht Fehlalarme aus
-// (z.B. „Zug zum Krankenhaus", „ich wohne in …").
-const BLOCK_CATEGORIES = [
-  'jailbreaking',
+// Schädliche Kategorien. Bewusst NICHT dabei: pii, health, financial, law —
+// die lösen bei harmlosen Reisefragen zu leicht Fehlalarme aus (z.B. „Zug zum
+// Krankenhaus", „ich wohne in …").
+const HARM_CATEGORIES = [
   'hate_and_discrimination',
   'violence_and_threats',
   'dangerous',
@@ -20,14 +19,18 @@ const BLOCK_CATEGORIES = [
   'sexual',
 ] as const;
 
+// jailbreaking prüfen wir nur beim INPUT (im Output ergibt es keinen Sinn).
+const INPUT_CATEGORIES = ['jailbreaking', ...HARM_CATEGORIES] as const;
+
 // Zusätzlicher Score-Schwellwert, falls das boolean-Flag knapp danebenliegt.
 const SCORE_THRESHOLD = 0.7;
 
 export type ModerationResult = { blocked: boolean; reason?: string };
 
-export async function moderateInput(text: string): Promise<ModerationResult> {
+/** Kern-Check gegen die Mistral Moderation API. Fail-open bei API-Fehler. */
+async function moderate(text: string, categories: readonly string[]): Promise<ModerationResult> {
   const apiKey = process.env.MISTRAL_API_KEY;
-  if (!apiKey) return { blocked: false };
+  if (!apiKey || !text.trim()) return { blocked: false };
 
   try {
     const res = await fetch(MODERATION_URL, {
@@ -54,7 +57,7 @@ export async function moderateInput(text: string): Promise<ModerationResult> {
     const result = data.results?.[0];
     if (!result) return { blocked: false };
 
-    for (const cat of BLOCK_CATEGORIES) {
+    for (const cat of categories) {
       const flagged = result.categories?.[cat] === true;
       const score = result.category_scores?.[cat] ?? 0;
       if (flagged || score >= SCORE_THRESHOLD) {
@@ -66,4 +69,17 @@ export async function moderateInput(text: string): Promise<ModerationResult> {
     console.warn('[guardrails] Moderation-Fehler → fail-open:', err instanceof Error ? err.message : err);
     return { blocked: false };
   }
+}
+
+/** Input-Moderation (vor dem LLM-Call): blockt Jailbreaks + schädliche Inhalte. */
+export function moderateInput(text: string): Promise<ModerationResult> {
+  return moderate(text, INPUT_CATEGORIES);
+}
+
+/** Output-Moderation (Post-Inference-Schicht): prüft die erzeugte Antwort auf
+ *  schädliche Inhalte. Beim Streaming ist das Detection + Telemetrie (die Antwort
+ *  ist beim Aufruf schon ausgeliefert), kein Real-Time-Blocking — für unser
+ *  read-only Low-Risk-Thema die passende Best-Practice-Schicht. */
+export function moderateOutput(text: string): Promise<ModerationResult> {
+  return moderate(text, HARM_CATEGORIES);
 }

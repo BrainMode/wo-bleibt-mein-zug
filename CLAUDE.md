@@ -47,12 +47,17 @@ LLM; das offen so sagen).
 5. **Guardrail-/Limit-Antworten** gehen als `createUIMessageStream` (statische Bubble, kein
    LLM-Call, keine Kosten) zurück — NICHT als JSON-Error, sonst crasht der useChat-Stream.
 
-## Guardrails / Kostenschutz
-- Reihenfolge in `/api/chat`: statische Validierung → Rate-Limit → Moderation → LLM.
-- Moderation blockt: jailbreaking, hate, violence, dangerous, criminal, selfharm, sexual.
+## Guardrails / Kostenschutz (mehrschichtig, an OWASP LLM Top 10 orientiert)
+- Reihenfolge in `/api/chat`: statische Validierung → Rate-Limit → **Input-Moderation** → LLM → **Output-Moderation (onFinish, Telemetrie)**.
+- Input-Moderation blockt: jailbreaking, hate, violence, dangerous, criminal, selfharm, sexual.
   Bewusst NICHT: pii/health/financial/law (Fehlalarme bei Reisefragen).
+- **Output-Moderation** (`moderateOutput`, Post-Inference): prüft die erzeugte Antwort auf schädliche Inhalte, loggt Treffer als `[guardrail:output-flagged]`. Beim Streaming Detection+Telemetrie, kein Real-Time-Blocking (bewusste Wahl für read-only Low-Risk-Bot).
+- **Fail-open** (bewusste Entscheidung): fällt die Moderation-API aus, wird durchgelassen (Verfügbarkeit > Perfektion). Bei höherem Risiko wäre fail-closed korrekt.
+- Scope-Enforcement im System-Prompt inkl. Anti-Bundling (Off-Topic-Anhängsel wird nur im Bahn-Teil beantwortet, Rest kontextpassend abgelehnt).
+- **Least Privilege**: alle Tools sind read-only → kein Excessive-Agency-/Insecure-Output-Risiko (OWASP LLM06/LLM02).
 - Rate-Limit: Upstash (per-IP + globaler Tages-Cap) mit In-Memory-Fallback ohne Env.
 - Harte LLM-Grenzen: `maxOutputTokens: 800`, `stepCountIs(6)`, `temperature: 0.3`.
+- **Red-Team-Eval:** `npm run test:guardrails` (braucht laufenden Server) — Jailbreak/Bundled-Bypass/Off-Topic/Legit-Fälle mit PASS/FAIL. Vor Prompt-Änderungen laufen lassen.
 
 ## Verifikation
 - `npm run smoke` → db-vendo direkt (Iserlohn/Hagen, echte Verspätung).

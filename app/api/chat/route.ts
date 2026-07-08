@@ -9,7 +9,7 @@ import {
 } from 'ai';
 import { bahnTools } from '@/lib/tools';
 import { systemPrompt } from '@/lib/prompts';
-import { moderateInput } from '@/lib/guardrails';
+import { moderateInput, moderateOutput } from '@/lib/guardrails';
 import { checkLimits, trackTokens, clientIp } from '@/lib/ratelimit';
 
 // db-vendo-client braucht die Node-Runtime (nutzt node:tls für den Akamai-Fix).
@@ -111,8 +111,18 @@ export async function POST(req: Request) {
     stopWhen: stepCountIs(6),
     temperature: 0.3,
     maxOutputTokens: 800,
-    onFinish: ({ usage }) => {
+    onFinish: async ({ usage, text }) => {
       void trackTokens(usage?.inputTokens ?? 0, usage?.outputTokens ?? 0);
+      // Post-Inference-Schicht: erzeugte Antwort gegen die Moderation prüfen.
+      // Geflaggte Outputs werden als Telemetrie geloggt (Red-Team-/Audit-Signal).
+      if (text) {
+        const out = await moderateOutput(text);
+        if (out.blocked) {
+          console.warn(
+            `[guardrail:output-flagged] category=${out.reason} snippet=${JSON.stringify(text.slice(0, 200))}`,
+          );
+        }
+      }
     },
   });
 

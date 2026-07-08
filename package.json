@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "smoke": "node scripts/smoke-vendo.mjs"
+    "smoke": "node scripts/smoke-vendo.mjs",
+    "test:guardrails": "node scripts/test-guardrails.mjs"
   },
   "dependencies": {
     "@ai-sdk/mistral": "^4.0.7",
