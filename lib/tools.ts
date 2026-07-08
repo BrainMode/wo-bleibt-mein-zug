@@ -6,6 +6,7 @@ import {
   getArrivals,
   planJourney,
   trackTrain,
+  nearbyStations,
 } from './bahn/actions';
 
 // AI-SDK-v7-Tools. WICHTIG: `inputSchema` (nicht mehr `parameters` wie in v4).
@@ -60,6 +61,15 @@ export const bahnTools = {
     }),
     execute: async ({ fromId, toId, departure, arrival }) =>
       planJourney(fromId, toId, { departure, arrival }),
+  }),
+
+  nearbyStations: tool({
+    description:
+      'Findet Bahnhöfe und Haltestellen im Umkreis eines Ortes oder einer Adresse. Für Fragen wie „Welche Bahnhöfe sind in der Nähe von <Ort/Adresse>?".',
+    inputSchema: z.object({
+      place: z.string().describe('Ort oder Adresse, z.B. "Kölner Dom" oder "Marienplatz München"'),
+    }),
+    execute: async ({ place }) => nearbyStations(place),
   }),
 
   trackTrain: tool({

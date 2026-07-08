@@ -6,6 +6,7 @@
 // zurück, damit ein API-Ausfall nicht den Antwort-Stream crasht — das Modell
 // kann die Fehlermeldung dem Nutzer erklären.
 import { getClient, rotateClient } from './client';
+import { cached } from '../cache';
 import { formatStation, formatBoardEntry, hhmm, delayMin, remarkTexts, amenityTexts } from './format';
 
 const API_ERROR = {
@@ -48,69 +49,78 @@ export type StationResult = { stations: ReturnType<typeof formatStation>[] } | t
 
 /** Sucht Bahnhöfe/Haltestellen nach Name. Liefert IDs für alle anderen Tools. */
 export async function searchStations(query: string): Promise<StationResult> {
-  try {
-    const results = await withRetry('searchStations', (c) =>
-      c.locations(query, {
-        results: 6,
-        stops: true,
-        addresses: false,
-        poi: false,
-      }),
-    );
-    return { stations: (results as unknown[]).map((s) => formatStation(s as never)) };
-  } catch (err) {
-    logError('searchStations', err);
-    return API_ERROR;
-  }
+  // Bahnhofs-IDs ändern sich praktisch nie → 24 h cachen.
+  return cached(`stations:${query.trim().toLowerCase()}`, 86_400, async () => {
+    try {
+      const results = await withRetry('searchStations', (c) =>
+        c.locations(query, {
+          results: 6,
+          stops: true,
+          addresses: false,
+          poi: false,
+        }),
+      );
+      return { stations: (results as unknown[]).map((s) => formatStation(s as never)) };
+    } catch (err) {
+      logError('searchStations', err);
+      return API_ERROR;
+    }
+  });
 }
 
 type BoardOpts = { when?: string; towards?: string };
 
 /** Abfahrtstafel eines Bahnhofs. `towards` filtert client-seitig nach Richtung. */
 export async function getDepartures(stationId: string, opts: BoardOpts = {}) {
-  try {
-    const res = await withRetry('getDepartures', (c) =>
-      c.departures(stationId, {
-        duration: 60,
-        results: 14,
-        when: opts.when ? new Date(opts.when) : undefined,
-      }),
-    );
-    let entries = (res.departures ?? []).map((d: unknown) => formatBoardEntry(d as never, 'departure'));
-    if (opts.towards) {
-      const needle = opts.towards.toLowerCase();
-      const filtered = entries.filter((e) => e.direction?.toLowerCase().includes(needle));
-      // Nur filtern, wenn dadurch nicht alles wegfällt (Richtung evtl. Zwischenziel).
-      if (filtered.length > 0) entries = filtered;
+  const key = `dep:${stationId}:${opts.when ?? 'now'}:${opts.towards ?? ''}`;
+  return cached(key, 30, async () => {
+    try {
+      const res = await withRetry('getDepartures', (c) =>
+        c.departures(stationId, {
+          duration: 60,
+          results: 14,
+          when: opts.when ? new Date(opts.when) : undefined,
+        }),
+      );
+      let entries = (res.departures ?? []).map((d: unknown) => formatBoardEntry(d as never, 'departure'));
+      if (opts.towards) {
+        const needle = opts.towards.toLowerCase();
+        const filtered = entries.filter((e) => e.direction?.toLowerCase().includes(needle));
+        // Nur filtern, wenn dadurch nicht alles wegfällt (Richtung evtl. Zwischenziel).
+        if (filtered.length > 0) entries = filtered;
+      }
+      return { station: stationId, departures: entries.slice(0, 10) };
+    } catch (err) {
+      logError('getDepartures', err);
+      return API_ERROR;
     }
-    return { station: stationId, departures: entries.slice(0, 10) };
-  } catch (err) {
-    logError('getDepartures', err);
-    return API_ERROR;
-  }
+  });
 }
 
 /** Ankunftstafel eines Bahnhofs. */
 export async function getArrivals(stationId: string, opts: BoardOpts = {}) {
-  try {
-    const res = await withRetry('getArrivals', (c) =>
-      c.arrivals(stationId, {
-        duration: 60,
-        results: 14,
-        when: opts.when ? new Date(opts.when) : undefined,
-      }),
-    );
-    let entries = (res.arrivals ?? []).map((d: unknown) => formatBoardEntry(d as never, 'arrival'));
-    if (opts.towards) {
-      const needle = opts.towards.toLowerCase();
-      const filtered = entries.filter((e) => e.origin?.toLowerCase().includes(needle));
-      if (filtered.length > 0) entries = filtered;
+  const key = `arr:${stationId}:${opts.when ?? 'now'}:${opts.towards ?? ''}`;
+  return cached(key, 30, async () => {
+    try {
+      const res = await withRetry('getArrivals', (c) =>
+        c.arrivals(stationId, {
+          duration: 60,
+          results: 14,
+          when: opts.when ? new Date(opts.when) : undefined,
+        }),
+      );
+      let entries = (res.arrivals ?? []).map((d: unknown) => formatBoardEntry(d as never, 'arrival'));
+      if (opts.towards) {
+        const needle = opts.towards.toLowerCase();
+        const filtered = entries.filter((e) => e.origin?.toLowerCase().includes(needle));
+        if (filtered.length > 0) entries = filtered;
+      }
+      return { station: stationId, arrivals: entries.slice(0, 10) };
+    } catch (err) {
+      logError('getArrivals', err);
+      return API_ERROR;
     }
-    return { station: stationId, arrivals: entries.slice(0, 10) };
-  } catch (err) {
-    logError('getArrivals', err);
-    return API_ERROR;
-  }
+  });
 }
 
 type JourneyOpts = { departure?: string; arrival?: string };
@@ -133,6 +143,10 @@ type Leg = {
 
 /** Verbindungssuche A→B mit Umstiegen. */
 export async function planJourney(fromId: string, toId: string, opts: JourneyOpts = {}) {
+  const key = `journey:${fromId}:${toId}:${opts.departure ?? ''}:${opts.arrival ?? 'now'}`;
+  // Konkrete Zeit/Datum → 5 Min cachen; "jetzt" → 45 s.
+  const ttl = opts.departure || opts.arrival ? 300 : 45;
+  return cached(key, ttl, async () => {
   try {
     // db-vendo behandelt departure und arrival als sich gegenseitig ausschließend
     // — schon das bloße Vorhandensein beider Schlüssel (auch als undefined) löst
@@ -177,6 +191,7 @@ export async function planJourney(fromId: string, toId: string, opts: JourneyOpt
     logError('planJourney', err);
     return API_ERROR;
   }
+  });
 }
 
 type Stopover = {
@@ -194,6 +209,8 @@ type Stopover = {
 
 /** Live-Fahrtverlauf eines konkreten Zuges (Kern-Feature: „Wo bleibt mein Zug?"). */
 export async function trackTrain(tripId: string) {
+  // Live-Daten, aber 20 s Cache fängt Mehrfachanfragen ohne spürbaren Frischeverlust.
+  return cached(`trip:${tripId}`, 20, async () => {
   try {
     const res = await withRetry('trackTrain', (c) => c.trip(tripId, { stopovers: true }));
     const t = (res as { trip?: unknown }).trip ?? res;
@@ -227,4 +244,37 @@ export async function trackTrain(tripId: string) {
     logError('trackTrain', err);
     return API_ERROR;
   }
+  });
+}
+
+/** Findet Bahnhöfe/Haltestellen im Umkreis eines Ortes/einer Adresse. */
+export async function nearbyStations(place: string) {
+  return cached(`nearby:${place.trim().toLowerCase()}`, 86_400, async () => {
+    try {
+      // 1) Ort/Adresse geocoden (locations liefert lat/lon, auch für Adressen/POIs).
+      const geo = (await withRetry('nearbyStations:geo', (c) =>
+        c.locations(place, { results: 1, stops: true, addresses: true, poi: true }),
+      )) as Array<{ location?: { latitude?: number; longitude?: number }; latitude?: number; longitude?: number }>;
+      const first = geo[0];
+      const lat = first?.location?.latitude ?? first?.latitude;
+      const lon = first?.location?.longitude ?? first?.longitude;
+      if (lat == null || lon == null) {
+        return { stations: [], hint: `Kein Ort namens "${place}" gefunden.` };
+      }
+      // 2) Haltestellen im Umkreis (3 km).
+      const results = await withRetry('nearbyStations', (c) =>
+        // @ts-expect-error — nearby ist im Minimal-Typ nicht deklariert
+        c.nearby({ type: 'location', latitude: lat, longitude: lon }, { results: 6, distance: 3000 }),
+      );
+      return {
+        stations: (results as unknown[]).map((s) => {
+          const st = s as { id?: string; name?: string; distance?: number; products?: unknown };
+          return { ...formatStation(st), distanceMeters: st.distance ?? null };
+        }),
+      };
+    } catch (err) {
+      logError('nearbyStations', err);
+      return API_ERROR;
+    }
+  });
 }

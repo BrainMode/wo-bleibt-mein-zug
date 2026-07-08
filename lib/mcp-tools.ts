@@ -5,6 +5,7 @@ import {
   getArrivals,
   planJourney,
   trackTrain,
+  nearbyStations,
 } from './bahn/actions';
 
 type McpServer = {
@@ -84,6 +85,17 @@ export function registerBahnMcpTools(server: McpServer) {
           arrival: arrival as string,
         }),
       ),
+  );
+
+  server.registerTool(
+    'nearbyStations',
+    {
+      title: 'Umkreissuche',
+      description:
+        'Findet Bahnhöfe/Haltestellen im Umkreis eines Ortes oder einer Adresse.',
+      inputSchema: { place: z.string().describe('Ort oder Adresse, z.B. "Kölner Dom"') },
+    },
+    async ({ place }) => asText(await nearbyStations(place as string)),
   );
 
   server.registerTool(
