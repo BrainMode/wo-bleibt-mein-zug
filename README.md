@@ -1,59 +1,31 @@
-# 🚆 Wo bleibt mein Zug?
+# Wo bleibt mein Zug?
 
-**Eine KI-Bahnauskunft in natürlicher Sprache — als Open-Source-Wochenendprojekt.**
+Eine KI-Bahnauskunft, mit der man in normaler Sprache nach Zügen, Verspätungen, Verbindungen und Bahnhöfen fragt. Sie schaut live in den Fahrplan und beantwortet auch Sachen wie „mein Zug nach Hagen hat Verspätung, ich steh in Iserlohn – wo bleibt er?".
 
-Frag in normalem Deutsch nach Abfahrten, Verspätungen, Gleisen und Verbindungen. Die KI schaut live in den Fahrplan und verfolgt einzelne Züge entlang ihrer Route.
+**Live: [wobleibtmeinzug.de](https://wobleibtmeinzug.de)**
 
-> „Mein Zug nach Hagen hat Verspätung, ich stehe in Iserlohn — wo bleibt er?"
+Entstanden ist das an einem Wochenende, nachdem die Deutsche Bahn angekündigt hat, 50 Millionen Euro in KI-Kundenkommunikation zu stecken. Der Chatbot-Teil davon – „frag in deiner Sprache nach deinem Zug" – lässt sich mit offenen Daten und einem günstigen europäischen Modell (Mistral, EU-Hosting) für ein paar Cent am Tag nachbauen. Der Rest der 50 Mio. steckt in Hardware, Leitstellen-IT und 7.000 Anzeigetafeln – das ist ein anderes Thema. Aber der Chat? Der geht so.
 
-…und die KI sucht den Bahnhof, ruft die Abfahrtstafel ab, findet den passenden Zug und sagt dir, wo er gerade steht und wie viel Verspätung er hat.
+## Was es kann
 
-**Live-Demo:** <https://wo-bleibt-mein-zug.vercel.app>
+- Abfahrten und Ankünfte mit Echtzeit-Verspätung, Gleis und Gleiswechsel
+- Verbindungssuche A→B inklusive Umstiegen, Sparpreis und Ausstattung pro Zug (Bordrestaurant, Fahrradmitnahme, WLAN …)
+- Einen konkreten Zug entlang seiner Route verfolgen
+- Bahnhofs-Ausstattung (Toiletten, DB Lounge, Schließfächer, stufenfreier Zugang) und Live-Aufzugstatus
+- Antwortet in der Sprache, in der man fragt – nicht nur Deutsch
+- Läuft auch als MCP-Server, z. B. für Claude Desktop
 
----
+## Kurz zu den Daten – was offen ist und was nicht
 
-## Warum gibt es das?
+Interessant ist, wie wenig die Bahn tatsächlich offen bereitstellt. Frei nutzbar sind:
 
-Im Juli 2026 hat die Deutsche Bahn ein **50-Millionen-Euro-Programm** für bessere KI-Kundenkommunikation vorgestellt (Chatbot „Kiana", Leitstellen-IT, neue App, 7.000 Anzeigetafeln). Der reine **Chatbot-Teil** davon — „frag in natürlicher Sprache nach deinem Zug" — lässt sich mit offenen APIs an einem Wochenende bauen. Genau das ist dieses Projekt: ein Denkanstoß, kein Ersatz.
+- **Timetables API** (offiziell, kostenlos): Fahrplan plus Echtzeit-Änderungen, also Verspätungen, Ausfälle, Gleiswechsel.
+- **FaSta** und **StaDa** (offiziell, kostenlos): Aufzug-/Rolltreppenstatus und Bahnhofs-Ausstattung.
+- **[db-vendo-client](https://github.com/public-transport/db-vendo-client)** (inoffiziell): Verbindungssuche und Live-Zugverfolgung.
 
-Fairerweise: Die 50 Mio. stecken größtenteils in Hardware, Datenpipelines und Prozessen — nicht im Sprachmodell. Aber der Chat-Layer? Der geht so. Und zwar mit einem **europäischen Modell** (Mistral, EU-Datenhaltung) für ein paar Cent pro Tag.
+Nicht frei sind ausgerechnet die spannenden Echtzeit-Sachen: die kuratierten **Störungsmeldungen** (RIS::Disruptions), **Auslastung**, und die **Wagenreihung** („wo hält Wagen 7"). Die stecken hinter Zugangsprüfung, Verträgen oder Bot-Schutz. Wer 50 Millionen in bessere Fahrgastinformation investiert, könnte diese Daten auch einfach offen zugänglich machen.
 
-Gebaut von [Denny Weber / WDC GmbH](https://wdc-gmbh.ch) — AI-first Consulting aus der Schweiz.
-
----
-
-## ⚠️ Disclaimer
-
-- **Kein offizielles Angebot der Deutsche Bahn AG.** Keine Affiliation, keine Markennutzung, kein DB-Logo.
-- **Die Datenquelle ist inoffiziell.** Dieses Projekt nutzt [`db-vendo-client`](https://github.com/public-transport/db-vendo-client), eine Community-Library, die die (nicht öffentlich dokumentierten) Endpunkte von bahn.de / DB Navigator nachbildet. Sie kann jederzeit ohne Vorwarnung brechen.
-- **Keine Gewähr** für Richtigkeit oder Verfügbarkeit der Fahrplandaten. Nicht für sicherheitskritische Entscheidungen nutzen. Angaben immer ohne Gewähr.
-
----
-
-## 🏗️ Architektur
-
-```
-Browser (Chat-UI)
-   │  Vercel AI SDK · useChat (Streaming)
-   ▼
-/api/chat  ──►  Guardrails (Mistral Moderation) ──► Rate-Limiting (Upstash)
-   │                                                       │
-   ▼                                                       │
-Mistral Small 4  ◄── Tool-Loop ──►  5 Bahn-Tools ──►  db-vendo-client ──► bahn.de
-   (EU, Tool Calling)                (searchStations, getDepartures,
-                                      getArrivals, planJourney, trackTrain)
-
-/api/mcp   ──►  dieselben 5 Tools als MCP-Server (Streamable HTTP)
-                für Claude Desktop, Cursor, Claude Code …
-```
-
-Der Clou: Chat-Agent **und** MCP-Server nutzen dieselben puren Funktionen in `lib/bahn/actions.ts` — keine Logik-Duplikation.
-
-**Stack:** Next.js 16 (App Router) · Vercel AI SDK v7 · `@ai-sdk/mistral` · `db-vendo-client` · `mcp-handler` · Tailwind v4 · Upstash Redis (optional).
-
----
-
-## 🚀 Lokal starten
+## Lokal starten
 
 Voraussetzung: Node.js ≥ 20.
 
@@ -61,46 +33,43 @@ Voraussetzung: Node.js ≥ 20.
 git clone https://github.com/BrainMode/wo-bleibt-mein-zug.git
 cd wo-bleibt-mein-zug
 npm install
+cp .env.example .env.local   # unter Windows: copy .env.example .env.local
 ```
 
-Umgebungsdatei anlegen und den Mistral-Key eintragen:
+Dann in `.env.local` einen Mistral-API-Key eintragen (kostenlos unter [console.mistral.ai/api-keys](https://console.mistral.ai/api-keys)):
 
 ```bash
-# PowerShell:
-copy .env.example .env.local
-# Git Bash / macOS / Linux:
-cp .env.example .env.local
+MISTRAL_API_KEY=dein-key
 ```
 
-Einen (kostenlosen) Mistral-Key auf <https://console.mistral.ai/api-keys> erzeugen und in `.env.local` bei `MISTRAL_API_KEY` eintragen. Dann:
+Und los:
 
 ```bash
 npm run dev
 ```
 
-→ <http://localhost:3000>
+→ [localhost:3000](http://localhost:3000)
 
-**Optional:** `npm run smoke` prüft die Bahn-Datenquelle direkt (ohne KI), falls du wissen willst, ob die inoffizielle API gerade erreichbar ist.
+Alle weiteren Umgebungsvariablen sind in `.env.example` erklärt – alle optional. Ohne sie läuft die App mit einem In-Memory-Rate-Limit und ohne die Bahnhofs-Tools; für die reine Fahrplan-Auskunft reicht der Mistral-Key.
 
----
+Wer testen will, ob die Bahn-Datenquelle gerade erreichbar ist, ohne die KI zu bemühen:
 
-## ▲ Auf Vercel deployen
+```bash
+npm run smoke
+```
 
-1. Repo forken.
-2. Auf <https://vercel.com/new> importieren.
-3. Environment-Variable `MISTRAL_API_KEY` setzen.
-4. **Empfohlen (Kostenschutz):** Im Vercel-Projekt unter _Storage → Marketplace_ eine **Upstash Redis**-Datenbank (Free Tier) anlegen. Vercel setzt `UPSTASH_REDIS_REST_URL` und `UPSTASH_REDIS_REST_TOKEN` automatisch. Ohne Redis läuft ein In-Memory-Fallback, der eine öffentliche Demo **nicht** zuverlässig schützt.
-5. Deploy.
+## Auf Vercel deployen
 
-> Hinweis: `db-vendo-client` läuft auf der Node-Runtime (der TLS-Fix in `lib/bahn/client.ts` braucht `node:tls`). Die Routen sind bereits mit `runtime = 'nodejs'` markiert — nichts weiter zu tun.
+1. Repo forken und auf [vercel.com/new](https://vercel.com/new) importieren.
+2. `MISTRAL_API_KEY` als Environment-Variable setzen.
+3. Für die öffentliche Nutzung empfiehlt sich eine **Upstash-Redis**-Datenbank (Vercel Marketplace, Free Tier) – dann greifen Caching und ein globaler Tages-Cap gegen zu hohe Kosten. Vercel setzt die Redis-Variablen automatisch. Ohne Redis läuft ein In-Memory-Fallback, der für eine öffentliche Demo aber nicht zuverlässig schützt.
+4. Optional die kostenlosen DB-Keys (`DB_CLIENT_ID`, `DB_API_KEY`) vom [DB API Marketplace](https://developers.deutschebahn.com/db-api-marketplace) für die Bahnhofs-Ausstattungs- und Aufzug-Tools.
 
----
+Die App braucht die Node-Runtime (nicht Edge) – das ist in den Routen bereits gesetzt.
 
-## 🔌 Als MCP-Server nutzen
+## Als MCP-Server nutzen
 
-Die 5 Bahn-Tools stehen auch als MCP-Server bereit (Streamable HTTP unter `/api/mcp`). Damit kann z.B. **Claude Desktop** live Züge abfragen.
-
-**Claude Desktop** (`claude_desktop_config.json`):
+Dieselben Bahn-Tools stehen unter `/api/mcp` als MCP-Server (Streamable HTTP) bereit. Für Claude Desktop in die `claude_desktop_config.json`:
 
 ```json
 {
@@ -113,41 +82,16 @@ Die 5 Bahn-Tools stehen auch als MCP-Server bereit (Streamable HTTP unter `/api/
 }
 ```
 
-**Cursor / Claude Code** und andere Streamable-HTTP-Clients können die URL direkt eintragen:
+Cursor, Claude Code und andere Streamable-HTTP-Clients können die URL direkt eintragen. Lokal testen mit `npx @modelcontextprotocol/inspector` gegen `http://localhost:3000/api/mcp`.
 
-```
-https://DEINE-DOMAIN.vercel.app/api/mcp
-```
+## Stack
 
-Lokal testen mit dem offiziellen Inspector:
+Next.js (App Router), Vercel AI SDK mit `@ai-sdk/mistral`, `db-vendo-client`, `mcp-handler`, Tailwind, optional Upstash Redis. Guardrails über die Mistral Moderation API plus einen strikten System-Prompt; die Ausgabe wird zusätzlich geprüft. `npm run test:guardrails` fährt gegen einen laufenden Server ein paar Angriffs- und Normalfälle.
 
-```bash
-npx @modelcontextprotocol/inspector
-# dann http://localhost:3000/api/mcp verbinden
-```
+## Rechtliches
 
-**Verfügbare Tools:** `searchStations`, `getDepartures`, `getArrivals`, `planJourney`, `trackTrain`.
+Dies ist kein offizielles Angebot der Deutsche Bahn AG, es besteht keine Verbindung und es wird keine Marke der DB verwendet. Die Farbgebung ist bewusst an das DB-Design angelehnt (Satire), aber nicht identisch. Die Fahrplandaten kommen teils über eine inoffizielle Schnittstelle und können jederzeit ausfallen – keine Gewähr für Richtigkeit oder Verfügbarkeit, nicht für sicherheitskritische Entscheidungen nutzen.
 
-Anders als bestehende DB-MCP-Server (die nur die offizielle Timetables-API mit Soll-Fahrplan per Bahnhofsnummer abbilden) kann dieser Server **Verbindungssuche A→B** und **Live-Zugverfolgung** entlang der kompletten Route.
+## Lizenz
 
----
-
-## 💶 Kosten & Limits
-
-- **Modell:** `mistral-small-latest` (Mistral Small 4), EU-Datenhaltung, Tool Calling. ~0,1–0,2 Cent pro Chat-Turn.
-- **Moderation:** `mistral-moderation-2603` (~0,10 $ / 1 Mio. Tokens) blockt Jailbreaks & schädliche Inhalte vor jedem LLM-Call. Fällt die Moderation aus, läuft die Anfrage durch (fail-open) — dokumentierte Design-Entscheidung zugunsten der Verfügbarkeit.
-- **Rate-Limiting:** pro IP 10 Nachrichten / 5 Min + 40 / Tag, plus globaler Tages-Cap (`DAILY_MESSAGE_CAP`, Default 1500).
-- **Scope:** Der System-Prompt begrenzt die KI strikt auf Bahn-/Reisethemen.
-
-Alles konfigurierbar über `.env` — siehe `.env.example`.
-
----
-
-## 📄 Lizenz
-
-Code: **MIT** (siehe [LICENSE](./LICENSE)).
-Fahrplandaten stammen über eine inoffizielle Schnittstelle von der Deutschen Bahn und unterliegen deren Bedingungen.
-
----
-
-_Ein Augenzwinkern-Projekt von [wdc-gmbh.ch](https://wdc-gmbh.ch). Wenn dir das gefällt: Stern dalassen, forken, weiterbauen._
+MIT – siehe [LICENSE](./LICENSE).
