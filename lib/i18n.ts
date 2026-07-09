@@ -28,6 +28,8 @@ type Strings = {
   footerNote: string;
   oss: string;
   by: string;
+  imprint: string;
+  privacy: string;
   tools: Record<string, [running: string, done: string]>;
 };
 
@@ -62,6 +64,8 @@ export const STRINGS: Record<Lang, Strings> = {
     footerNote: 'Angaben ohne Gewähr · Datenquelle inoffiziell',
     oss: 'Open Source',
     by: 'ein Projekt von',
+    imprint: 'Impressum',
+    privacy: 'Datenschutz',
     tools: TOOLS_DE,
   },
   en: {
@@ -83,6 +87,8 @@ export const STRINGS: Record<Lang, Strings> = {
     footerNote: 'No guarantee · unofficial data source',
     oss: 'Open Source',
     by: 'a project by',
+    imprint: 'Imprint',
+    privacy: 'Privacy',
     tools: {
       searchStations: ['Finding station …', 'Station found'],
       getDepartures: ['Loading departures …', 'Departures loaded'],
@@ -113,6 +119,8 @@ export const STRINGS: Record<Lang, Strings> = {
     footerNote: 'Garanti verilmez · resmi olmayan veri kaynağı',
     oss: 'Açık kaynak',
     by: 'bir projesi:',
+    imprint: 'Künye',
+    privacy: 'Gizlilik',
     tools: {
       searchStations: ['İstasyon aranıyor …', 'İstasyon bulundu'],
       getDepartures: ['Kalkışlar yükleniyor …', 'Kalkışlar yüklendi'],
@@ -143,6 +151,8 @@ export const STRINGS: Record<Lang, Strings> = {
     footerNote: 'Sans garantie · source de données non officielle',
     oss: 'Open source',
     by: 'un projet de',
+    imprint: 'Mentions légales',
+    privacy: 'Confidentialité',
     tools: {
       searchStations: ['Recherche de la gare …', 'Gare trouvée'],
       getDepartures: ['Chargement des départs …', 'Départs chargés'],
@@ -173,6 +183,8 @@ export const STRINGS: Record<Lang, Strings> = {
     footerNote: 'Sin garantía · fuente de datos no oficial',
     oss: 'Open Source',
     by: 'un proyecto de',
+    imprint: 'Aviso legal',
+    privacy: 'Privacidad',
     tools: {
       searchStations: ['Buscando estación …', 'Estación encontrada'],
       getDepartures: ['Cargando salidas …', 'Salidas cargadas'],
@@ -203,6 +215,8 @@ export const STRINGS: Record<Lang, Strings> = {
     footerNote: 'Senza garanzia · fonte dati non ufficiale',
     oss: 'Open Source',
     by: 'un progetto di',
+    imprint: 'Note legali',
+    privacy: 'Privacy',
     tools: {
       searchStations: ['Ricerca stazione …', 'Stazione trovata'],
       getDepartures: ['Carico partenze …', 'Partenze caricate'],

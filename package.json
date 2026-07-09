@@ -2,7 +2,7 @@
   "name": "wo-bleibt-mein-zug",
   "version": "0.1.0",
   "private": true,
-  "description": "Inoffizielle KI-Bahnauskunft — ein Open-Source-Wochenendprojekt. Fragt in natürlicher Sprache nach Zügen, Verspätungen und Verbindungen.",
+  "description": "Inoffizielle KI-Bahnauskunft — über Nacht gebaut, Open Source. Fragt in natürlicher Sprache nach Zügen, Verspätungen und Verbindungen.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

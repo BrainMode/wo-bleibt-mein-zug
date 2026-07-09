@@ -144,6 +144,20 @@ export function Chat() {
               WDC
             </a>
           </p>
+          <p className="mt-1 text-center text-[11px] text-[var(--muted)]">
+            <a
+              href="https://wdc-gmbh.ch/impressum/"
+              className="underline hover:text-[var(--ink)]"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {s.imprint}
+            </a>{' '}
+            ·{' '}
+            <a href="/datenschutz" className="underline hover:text-[var(--ink)]">
+              {s.privacy}
+            </a>
+          </p>
         </form>
       </div>
     </div>

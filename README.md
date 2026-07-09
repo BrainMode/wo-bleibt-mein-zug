@@ -6,7 +6,7 @@ Eine KI-Bahnauskunft, mit der man in normaler Sprache nach Zügen, Verspätungen
 
 **Live: [wobleibtmeinzug.de](https://wobleibtmeinzug.de)**
 
-Entstanden ist das an einem Wochenende, nachdem die Deutsche Bahn angekündigt hat, 50 Millionen Euro in KI-Kundenkommunikation zu stecken. Der Chatbot-Teil davon – „frag in deiner Sprache nach deinem Zug" – lässt sich mit offenen Daten und einem günstigen europäischen Modell (Mistral, EU-Hosting) für ein paar Cent am Tag nachbauen. Der Rest der 50 Mio. steckt in Hardware, Leitstellen-IT und 7.000 Anzeigetafeln – das ist ein anderes Thema. Aber der Chat? Der geht so.
+Entstanden ist das über Nacht, nachdem die Deutsche Bahn angekündigt hat, 50 Millionen Euro in KI-Kundenkommunikation zu stecken. Der Chatbot-Teil davon – „frag in deiner Sprache nach deinem Zug" – lässt sich mit offenen Daten und einem günstigen europäischen Modell (Mistral, EU-Hosting) für ein paar Cent am Tag nachbauen. Der Rest der 50 Mio. steckt in Hardware, Leitstellen-IT und 7.000 Anzeigetafeln – das ist ein anderes Thema. Aber der Chat? Der geht so.
 
 ## Was es kann
 
@@ -109,7 +109,7 @@ An AI train assistant you can ask in plain language about trains, delays, connec
 
 **Live: [wobleibtmeinzug.de](https://wobleibtmeinzug.de)**
 
-It was built over a weekend, after Deutsche Bahn announced it would spend 50 million euros on AI customer communication. The chatbot part of that – "ask about your train in your own language" – can be rebuilt with open data and a cheap European model (Mistral, hosted in the EU) for a few cents a day. The rest of the 50 million goes into hardware, control-room IT and 7,000 platform displays – that's a different story. But the chat? This is roughly it.
+It was built overnight, after Deutsche Bahn announced it would spend 50 million euros on AI customer communication. The chatbot part of that – "ask about your train in your own language" – can be rebuilt with open data and a cheap European model (Mistral, hosted in the EU) for a few cents a day. The rest of the 50 million goes into hardware, control-room IT and 7,000 platform displays – that's a different story. But the chat? This is roughly it.
 
 ## What it does
 
