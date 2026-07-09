@@ -1,5 +1,7 @@
 # Wo bleibt mein Zug?
 
+*Deutsch · [English below ↓](#where-is-my-train)*
+
 Eine KI-Bahnauskunft, mit der man in normaler Sprache nach Zügen, Verspätungen, Verbindungen und Bahnhöfen fragt. Sie schaut live in den Fahrplan und beantwortet auch Sachen wie „mein Zug nach Hagen hat Verspätung, ich steh in Iserlohn – wo bleibt er?".
 
 **Live: [wobleibtmeinzug.de](https://wobleibtmeinzug.de)**
@@ -95,3 +97,106 @@ Dies ist kein offizielles Angebot der Deutsche Bahn AG, es besteht keine Verbind
 ## Lizenz
 
 MIT – siehe [LICENSE](./LICENSE).
+
+---
+---
+
+# Where is my train?
+
+*[Deutsch oben ↑](#wo-bleibt-mein-zug) · English*
+
+An AI train assistant you can ask in plain language about trains, delays, connections and stations. It looks at the live timetable and handles questions like "my train to Hagen is delayed, I'm in Iserlohn – where is it?".
+
+**Live: [wobleibtmeinzug.de](https://wobleibtmeinzug.de)**
+
+It was built over a weekend, after Deutsche Bahn announced it would spend 50 million euros on AI customer communication. The chatbot part of that – "ask about your train in your own language" – can be rebuilt with open data and a cheap European model (Mistral, hosted in the EU) for a few cents a day. The rest of the 50 million goes into hardware, control-room IT and 7,000 platform displays – that's a different story. But the chat? This is roughly it.
+
+## What it does
+
+- Departures and arrivals with real-time delay, platform and platform changes
+- Journey search A→B including transfers, cheapest fare and per-train amenities (bord restaurant, bike spaces, Wi-Fi …)
+- Track a specific train along its route
+- Station facilities (toilets, DB Lounge, lockers, step-free access) and live elevator status
+- Answers in whatever language you ask in – not just German
+- Also runs as an MCP server, e.g. for Claude Desktop
+
+## A note on the data – what's open and what isn't
+
+The interesting part is how little the railway actually makes available. Free to use:
+
+- **Timetables API** (official, free): schedule plus real-time changes – delays, cancellations, platform changes.
+- **FaSta** and **StaDa** (official, free): elevator/escalator status and station facilities.
+- **[db-vendo-client](https://github.com/public-transport/db-vendo-client)** (unofficial): journey search and live train tracking.
+
+What's *not* free is exactly the real-time stuff that matters: the curated **disruption messages** (RIS::Disruptions), **occupancy**, and the **coach sequence** ("where does coach 7 stop"). Those sit behind access reviews, contracts or bot protection. A company investing 50 million in better passenger information could also just make this data openly available.
+
+## Run it locally
+
+Requires Node.js ≥ 20.
+
+```bash
+git clone https://github.com/BrainMode/wo-bleibt-mein-zug.git
+cd wo-bleibt-mein-zug
+npm install
+cp .env.example .env.local   # Windows: copy .env.example .env.local
+```
+
+Then add a Mistral API key to `.env.local` (free at [console.mistral.ai/api-keys](https://console.mistral.ai/api-keys)):
+
+```bash
+MISTRAL_API_KEY=your-key
+```
+
+And run it:
+
+```bash
+npm run dev
+```
+
+→ [localhost:3000](http://localhost:3000)
+
+All other environment variables are documented in `.env.example` and are optional. Without them the app runs with an in-memory rate limit and without the station tools; the Mistral key alone is enough for plain timetable answers.
+
+To check whether the railway data source is currently reachable, without involving the AI:
+
+```bash
+npm run smoke
+```
+
+## Deploy on Vercel
+
+1. Fork the repo and import it at [vercel.com/new](https://vercel.com/new).
+2. Set `MISTRAL_API_KEY` as an environment variable.
+3. For public use, add an **Upstash Redis** database (Vercel Marketplace, free tier) – that enables caching and a global daily cap against runaway cost. Vercel sets the Redis variables automatically. Without Redis an in-memory fallback runs, which does not reliably protect a public demo.
+4. Optionally the free DB keys (`DB_CLIENT_ID`, `DB_API_KEY`) from the [DB API Marketplace](https://developers.deutschebahn.com/db-api-marketplace) for the station-facility and elevator tools.
+
+The app needs the Node runtime (not Edge) – already set in the routes.
+
+## Use it as an MCP server
+
+The same train tools are exposed under `/api/mcp` as an MCP server (Streamable HTTP). For Claude Desktop, in `claude_desktop_config.json`:
+
+```json
+{
+  "mcpServers": {
+    "wo-bleibt-mein-zug": {
+      "command": "npx",
+      "args": ["-y", "mcp-remote", "https://YOUR-DOMAIN.vercel.app/api/mcp"]
+    }
+  }
+}
+```
+
+Cursor, Claude Code and other Streamable-HTTP clients can use the URL directly. Test locally with `npx @modelcontextprotocol/inspector` against `http://localhost:3000/api/mcp`.
+
+## Stack
+
+Next.js (App Router), the Vercel AI SDK with `@ai-sdk/mistral`, `db-vendo-client`, `mcp-handler`, Tailwind, optional Upstash Redis. Guardrails via the Mistral Moderation API plus a strict system prompt; the output is checked as well. `npm run test:guardrails` runs a few attack and normal cases against a running server.
+
+## Legal
+
+This is not an official Deutsche Bahn AG offering, there is no affiliation, and no DB trademark is used. The colour scheme deliberately echoes the DB design (satire) but is not identical. Part of the timetable data comes through an unofficial interface and can break at any time – no guarantee of accuracy or availability, do not use for safety-critical decisions.
+
+## License
+
+MIT – see [LICENSE](./LICENSE).
