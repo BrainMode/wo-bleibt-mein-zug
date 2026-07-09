@@ -1,37 +1,42 @@
-// Übersetzt Tool-Aufrufe in freundliche deutsche Statuszeilen mit Spinner,
-// die während der Ausführung eingeblendet werden.
+import type { Lang } from '@/lib/i18n';
+import { STRINGS } from '@/lib/i18n';
 
-const TOOL_LABELS: Record<string, { running: string; done: string; icon: string }> = {
-  searchStations: { running: 'Suche Bahnhof …', done: 'Bahnhof gefunden', icon: '🔍' },
-  getDepartures: { running: 'Lade Abfahrtstafel …', done: 'Abfahrten geladen', icon: '🚉' },
-  getArrivals: { running: 'Lade Ankunftstafel …', done: 'Ankünfte geladen', icon: '🚉' },
-  planJourney: { running: 'Suche Verbindungen …', done: 'Verbindungen gefunden', icon: '🗺️' },
-  trackTrain: { running: 'Verfolge Zug …', done: 'Zug verfolgt', icon: '📍' },
+const ICONS: Record<string, string> = {
+  searchStations: '🔎',
+  getDepartures: '🚉',
+  getArrivals: '🚉',
+  planJourney: '🗺️',
+  trackTrain: '📍',
+  nearbyStations: '📍',
+  stationFacilities: '🏢',
+  facilityStatus: '🛗',
 };
 
 export function ToolStatus({
   toolName,
   state,
+  lang,
 }: {
   toolName: string;
   state: string;
+  lang: Lang;
 }) {
-  const label = TOOL_LABELS[toolName];
-  if (!label) return null;
-
-  const done = state === 'output-available';
-  const error = state === 'output-error';
+  const labels = STRINGS[lang].tools[toolName];
+  if (!labels) return null;
+  const [running, done] = labels;
+  const isDone = state === 'output-available';
+  const isError = state === 'output-error';
 
   return (
-    <div className="my-1.5 flex items-center gap-2 text-sm text-emerald-300/70">
-      <span aria-hidden>{label.icon}</span>
-      {error ? (
-        <span className="text-amber-300/80">Bahn-API nicht erreichbar</span>
-      ) : done ? (
-        <span className="text-emerald-300/60">✓ {label.done}</span>
+    <div className="my-1 flex items-center gap-2 text-[13px] text-[var(--muted)]">
+      <span aria-hidden>{ICONS[toolName] ?? '•'}</span>
+      {isError ? (
+        <span className="text-[var(--wbmz-red)]">⚠︎</span>
+      ) : isDone ? (
+        <span>✓ {done}</span>
       ) : (
         <span className="flex items-center gap-2">
-          {label.running}
+          {running}
           <span className="inline-flex gap-0.5">
             <Dot delay="0ms" />
             <Dot delay="150ms" />
@@ -46,7 +51,7 @@ export function ToolStatus({
 function Dot({ delay }: { delay: string }) {
   return (
     <span
-      className="inline-block h-1 w-1 animate-bounce rounded-full bg-emerald-400"
+      className="inline-block h-1 w-1 animate-bounce rounded-full bg-[var(--wbmz-red)]"
       style={{ animationDelay: delay }}
     />
   );

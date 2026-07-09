@@ -1,24 +1,22 @@
 'use client';
 
-export const EXAMPLES = [
-  'Mein Zug nach Hagen hat Verspätung, ich stehe in Iserlohn — wo bleibt er?',
-  'Nächste Verbindung von Berlin Hbf nach München Hbf',
-  'Welche Züge fahren in der nächsten Stunde ab Köln Hbf Richtung Düsseldorf?',
-];
+import type { Lang } from '@/lib/i18n';
+import { STRINGS } from '@/lib/i18n';
 
-export function ExampleChips({ onPick }: { onPick: (text: string) => void }) {
+export function ExampleChips({ lang, onPick }: { lang: Lang; onPick: (text: string) => void }) {
+  const s = STRINGS[lang];
   return (
     <div className="mx-auto mt-6 flex max-w-2xl flex-col gap-2">
-      <p className="mb-1 text-center text-xs uppercase tracking-wider text-emerald-400/50">
-        Probier eine Frage
+      <p className="mb-1 text-center text-xs font-semibold uppercase tracking-wider text-[var(--muted)]">
+        {s.examplesLabel}
       </p>
-      {EXAMPLES.map((ex) => (
+      {s.examples.map((ex) => (
         <button
           key={ex}
           onClick={() => onPick(ex)}
-          className="group rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left text-sm text-emerald-50/80 transition hover:border-emerald-500/40 hover:bg-emerald-500/[0.06] hover:text-emerald-50"
+          className="group rounded-lg border border-[var(--border)] bg-white px-4 py-3 text-left text-sm text-[var(--ink)] transition hover:border-[var(--wbmz-red)] hover:bg-[var(--panel)]"
         >
-          <span className="mr-2 text-emerald-400/70 group-hover:text-emerald-300">🚆</span>
+          <span className="mr-2 text-[var(--wbmz-red)]">🚆</span>
           {ex}
         </button>
       ))}

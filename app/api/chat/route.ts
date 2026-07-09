@@ -57,9 +57,11 @@ function lastUserText(messages: UIMessage[]): string {
 export async function POST(req: Request) {
   // 1) Statische Validierung (0 Kosten)
   let messages: UIMessage[];
+  let uiLang: string | undefined;
   try {
     const body = await req.json();
     messages = body.messages;
+    uiLang = typeof body.lang === 'string' ? body.lang : undefined;
     if (!Array.isArray(messages) || messages.length === 0) throw new Error('messages fehlt');
   } catch {
     return json({ error: 'invalid', message: 'Ungültige Anfrage.' }, 400);
@@ -105,7 +107,7 @@ export async function POST(req: Request) {
   // 4) LLM-Loop mit harten Grenzen
   const result = streamText({
     model: mistral(MODEL),
-    system: systemPrompt(),
+    system: systemPrompt(uiLang),
     messages: await convertToModelMessages(trimmed),
     tools: bahnTools,
     stopWhen: stepCountIs(6),

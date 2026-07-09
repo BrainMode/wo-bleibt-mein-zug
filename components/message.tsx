@@ -1,9 +1,9 @@
 import type { UIMessage } from 'ai';
+import type { Lang } from '@/lib/i18n';
 import { ToolStatus } from './tool-status';
 
-// Rendert eine einzelne Chat-Nachricht aus ihren typisierten Parts.
-// AI-SDK-v7: Tool-Parts heißen `tool-<name>` und tragen einen state.
-export function Message({ message }: { message: UIMessage }) {
+// Rendert eine Chat-Nachricht aus ihren typisierten Parts (DB-Look).
+export function Message({ message, lang }: { message: UIMessage; lang: Lang }) {
   const isUser = message.role === 'user';
 
   return (
@@ -11,8 +11,8 @@ export function Message({ message }: { message: UIMessage }) {
       <div
         className={
           isUser
-            ? 'max-w-[85%] rounded-2xl rounded-br-sm bg-emerald-600/90 px-4 py-2.5 text-[15px] leading-relaxed text-white shadow-sm'
-            : 'max-w-[90%] rounded-2xl rounded-bl-sm bg-white/[0.04] px-4 py-3 text-[15px] leading-relaxed text-emerald-50/95 ring-1 ring-white/5'
+            ? 'max-w-[85%] rounded-lg rounded-br-sm bg-[var(--wbmz-red)] px-4 py-2.5 text-[15px] leading-relaxed text-white'
+            : 'max-w-[92%] rounded-lg rounded-bl-sm border border-[var(--border)] bg-white px-4 py-3 text-[15px] leading-relaxed text-[var(--ink)]'
         }
       >
         {message.parts.map((part, i) => {
@@ -26,7 +26,7 @@ export function Message({ message }: { message: UIMessage }) {
           if (part.type.startsWith('tool-')) {
             const toolName = part.type.slice('tool-'.length);
             const state = (part as { state?: string }).state ?? '';
-            return <ToolStatus key={i} toolName={toolName} state={state} />;
+            return <ToolStatus key={i} toolName={toolName} state={state} lang={lang} />;
           }
           return null;
         })}

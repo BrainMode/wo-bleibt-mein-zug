@@ -4,12 +4,12 @@ import './globals.css';
 export const metadata: Metadata = {
   title: 'Wo bleibt mein Zug? — KI-Bahnauskunft',
   description:
-    'Inoffizielle KI-Bahnauskunft in natürlicher Sprache. Frag nach Abfahrten, Verspätungen und Verbindungen. Ein Open-Source-Wochenendprojekt.',
+    'Inoffizielle KI-Bahnauskunft in 100+ Sprachen. Frag nach Abfahrten, Verspätungen, Verbindungen und Bahnhofs-Ausstattung. Ein Open-Source-Wochenendprojekt.',
   applicationName: 'Wo bleibt mein Zug?',
   openGraph: {
     title: 'Wo bleibt mein Zug?',
     description:
-      'KI-Bahnauskunft in natürlicher Sprache — Open Source, mit europäischem Modell. Ein Wochenendprojekt.',
+      'KI-Bahnauskunft in 100+ Sprachen — Open Source, mit europäischem Modell. Ein Wochenendprojekt.',
     type: 'website',
     locale: 'de_DE',
   },
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0a0f0d',
+  themeColor: '#e2001a',
   width: 'device-width',
   initialScale: 1,
 };

@@ -1,7 +1,21 @@
 @import 'tailwindcss';
 
+/*
+  Design-Sprache angelehnt an die Deutsche Bahn (satirischer Seitenhieb).
+  WICHTIG (rechtlich): Farbe ist BEWUSST NICHT das DB-Verkehrsrot #EC0016,
+  sondern ein leicht abweichendes Signalrot. Keine DB-Marke, kein DB-Logo,
+  eigenes „WBMZ"-Kürzel, klarer Disclaimer. Parodie/Satire.
+*/
 :root {
-  color-scheme: dark;
+  --wbmz-red: #e2001a; /* eigenes Rot, nicht DB #EC0016 */
+  --wbmz-red-dark: #b80016;
+  --ink: #1a2029; /* DB-artiges Dunkelgrau */
+  --muted: #646973;
+  --bg: #ffffff;
+  --panel: #f0f3f5; /* helles DB-Grau */
+  --panel-2: #e7ebef;
+  --border: #d7dce1;
+  color-scheme: light;
 }
 
 html,
@@ -10,14 +24,12 @@ body {
 }
 
 body {
-  background:
-    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(16, 185, 129, 0.12), transparent 70%),
-    #0a0f0d;
-  color: #e6efe9;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Helvetica Neue', Helvetica, Arial, 'Segoe UI', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
-/* Sanftes Erscheinen neuer Nachrichten */
 @keyframes fade-in-up {
   from {
     opacity: 0;
@@ -28,33 +40,45 @@ body {
     transform: translateY(0);
   }
 }
-
 .animate-in {
-  animation: fade-in-up 0.25s ease-out;
+  animation: fade-in-up 0.22s ease-out;
 }
 
-/* Blinkender Cursor beim Streaming */
 @keyframes blink {
   0%,
   100% {
     opacity: 1;
   }
   50% {
-    opacity: 0;
+    opacity: 0.25;
   }
 }
-
 .cursor-blink::after {
   content: '▍';
   margin-left: 1px;
   animation: blink 1s step-end infinite;
-  color: #34d399;
+  color: var(--wbmz-red);
 }
 
 ::-webkit-scrollbar {
   width: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--panel-2);
   border-radius: 8px;
+}
+
+/* WBMZ-Logo-Kasten — Anspielung auf den roten DB-Logo-Kasten, aber „WBMZ". */
+.wbmz-logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--wbmz-red);
+  color: #fff;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  border-radius: 6px;
+  padding: 0.28em 0.5em;
+  line-height: 1;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
