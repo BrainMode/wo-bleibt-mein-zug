@@ -44,11 +44,18 @@ export function registerBahnMcpTools(server: McpServer) {
       inputSchema: {
         stationId: z.string().describe('id aus searchStations'),
         towards: z.string().optional().describe('Optionaler Zielort-Filter, z.B. "Hagen"'),
+        line: z.string().optional().describe('Optionaler Linien-/Zugnummer-Filter, z.B. "ICE 627"'),
         when: z.string().optional().describe('Optionaler ISO-Zeitpunkt'),
       },
     },
-    async ({ stationId, towards, when }) =>
-      asText(await getDepartures(stationId as string, { towards: towards as string, when: when as string })),
+    async ({ stationId, towards, line, when }) =>
+      asText(
+        await getDepartures(stationId as string, {
+          towards: towards as string,
+          line: line as string,
+          when: when as string,
+        }),
+      ),
   );
 
   server.registerTool(

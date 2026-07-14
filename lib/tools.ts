@@ -32,12 +32,18 @@ export const bahnTools = {
         .string()
         .optional()
         .describe('Optionaler Zielort-Filter, z.B. "Hagen" — zeigt nur Züge in diese Richtung'),
+      line: z
+        .string()
+        .optional()
+        .describe(
+          'Optionaler Linien-/Zugnummer-Filter, z.B. "ICE 627" oder "RE 96" — liefert deterministisch nur diesen Zug. Nutze das, um einen per Nummer genannten Zug zu finden (dann tripId für trackTrain nehmen).',
+        ),
       when: z
         .string()
         .optional()
         .describe('Optionaler ISO-Zeitpunkt; ohne Angabe = jetzt'),
     }),
-    execute: async ({ stationId, towards, when }) => getDepartures(stationId, { towards, when }),
+    execute: async ({ stationId, towards, line, when }) => getDepartures(stationId, { towards, line, when }),
   }),
 
   getArrivals: tool({

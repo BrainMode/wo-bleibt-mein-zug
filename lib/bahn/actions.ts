@@ -68,11 +68,16 @@ export async function searchStations(query: string): Promise<StationResult> {
   });
 }
 
-type BoardOpts = { when?: string; towards?: string };
+type BoardOpts = { when?: string; towards?: string; line?: string };
 
-/** Abfahrtstafel eines Bahnhofs. `towards` filtert client-seitig nach Richtung. */
+/** Normalisiert Linienbezeichnungen für den Vergleich: „ICE 627" → „ice627". */
+function normLine(s: string): string {
+  return s.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+/** Abfahrtstafel eines Bahnhofs. `towards` filtert nach Richtung, `line` nach Linie/Zugnummer. */
 export async function getDepartures(stationId: string, opts: BoardOpts = {}) {
-  const key = `dep:${stationId}:${opts.when ?? 'now'}:${opts.towards ?? ''}`;
+  const key = `dep:${stationId}:${opts.when ?? 'now'}:${opts.towards ?? ''}:${opts.line ?? ''}`;
   return cached(key, 30, async () => {
     try {
       const res = await withRetry('getDepartures', (c) =>
@@ -87,6 +92,14 @@ export async function getDepartures(stationId: string, opts: BoardOpts = {}) {
         const needle = opts.towards.toLowerCase();
         const filtered = entries.filter((e) => e.direction?.toLowerCase().includes(needle));
         // Nur filtern, wenn dadurch nicht alles wegfällt (Richtung evtl. Zwischenziel).
+        if (filtered.length > 0) entries = filtered;
+      }
+      if (opts.line) {
+        // Deterministisch den gesuchten Zug herausfiltern (statt Modell-Raten).
+        const q = normLine(opts.line);
+        const exact = entries.filter((e) => normLine(e.line) === q);
+        const partial = entries.filter((e) => normLine(e.line).includes(q));
+        const filtered = exact.length > 0 ? exact : partial;
         if (filtered.length > 0) entries = filtered;
       }
       return { station: stationId, departures: entries.slice(0, 10) };
