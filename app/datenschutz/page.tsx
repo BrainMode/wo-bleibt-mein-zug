@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { getOwner } from '@/lib/owner';
 
 export const metadata: Metadata = {
   title: 'Datenschutz — Wo bleibt mein Zug?',
@@ -7,6 +8,8 @@ export const metadata: Metadata = {
 };
 
 export default function DatenschutzPage() {
+  const owner = getOwner();
+
   return (
     <div className="min-h-dvh bg-[var(--bg)]">
       <header className="border-b border-[var(--border)] bg-white">
@@ -21,63 +24,84 @@ export default function DatenschutzPage() {
       <main className="mx-auto max-w-2xl px-4 py-8 text-[15px] leading-relaxed text-[var(--ink)]">
         <h1 className="text-2xl font-bold">Datenschutz</h1>
 
-        <p className="mt-4 text-[var(--muted)]">
-          Diese Seite ist ein inoffizielles, kostenloses Projekt und sammelt so wenig Daten wie
-          möglich. Es gibt keine Nutzerkonten und keine Werbe- oder Analyse-Tracker.
-        </p>
+        {!owner ? (
+          <p className="mt-4 text-[var(--muted)]">
+            Für diese Instanz sind keine Betreiber-Angaben hinterlegt. Wer diese App selbst betreibt,
+            trägt Verantwortlichen, Impressum und Kontakt über die Umgebungsvariablen
+            <code className="mx-1 rounded bg-[var(--panel)] px-1 py-0.5 font-mono text-[13px]">
+              OWNER_NAME
+            </code>
+            ,
+            <code className="mx-1 rounded bg-[var(--panel)] px-1 py-0.5 font-mono text-[13px]">
+              OWNER_ADDRESS
+            </code>
+            {' '}und{' '}
+            <code className="mx-1 rounded bg-[var(--panel)] px-1 py-0.5 font-mono text-[13px]">
+              OWNER_IMPRINT_URL
+            </code>{' '}
+            ein (siehe <code className="font-mono text-[13px]">.env.example</code>).
+          </p>
+        ) : (
+          <>
+            <p className="mt-4 text-[var(--muted)]">
+              Diese Seite ist ein inoffizielles, kostenloses Projekt und sammelt so wenig Daten wie
+              möglich. Es gibt keine Nutzerkonten und keine Werbe- oder Analyse-Tracker.
+            </p>
 
-        <Section title="Verantwortlich">
-          WDC GmbH, Bitzistrasse 1c, 6370 Stans, Schweiz. Kontakt über das{' '}
-          <a
-            href="https://wdc-gmbh.ch/impressum/"
-            className="text-[var(--wbmz-red)] underline"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Impressum
-          </a>
-          .
-        </Section>
+            <Section title="Verantwortlich">
+              {owner.name}, {owner.address}. Kontakt über das{' '}
+              <a
+                href={owner.contactUrl}
+                className="text-[var(--wbmz-red)] underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Impressum
+              </a>
+              .
+            </Section>
 
-        <Section title="Deine Chat-Eingaben">
-          Deine Nachricht wird zur Beantwortung an die Mistral-API (Mistral AI, Frankreich/EU)
-          übertragen — an das Sprachmodell für die Antwort und an eine Moderationsprüfung, die
-          Missbrauch abfängt. Laut Mistral werden über die API übermittelte Inhalte nicht zum
-          Training der Modelle verwendet. Deine Chat-Verläufe werden nicht dauerhaft auf eigenen
-          Servern gespeichert.
-        </Section>
+            <Section title="Deine Chat-Eingaben">
+              Deine Nachricht wird zur Beantwortung an die Mistral-API (Mistral AI, Frankreich/EU)
+              übertragen — an das Sprachmodell für die Antwort und an eine Moderationsprüfung, die
+              Missbrauch abfängt. Laut Mistral werden über die API übermittelte Inhalte nicht zum
+              Training der Modelle verwendet. Deine Chat-Verläufe werden nicht dauerhaft auf eigenen
+              Servern gespeichert.
+            </Section>
 
-        <Section title="IP-Adresse">
-          Zum Schutz vor Missbrauch und zur Begrenzung der Kosten (Rate-Limiting) wird deine
-          IP-Adresse kurzzeitig verarbeitet — als Schlüssel für Zähler, die nach spätestens 24
-          Stunden ablaufen. Dafür nutzen wir Upstash (Redis). Zusätzlich zählen wir nur die
-          Gesamtzahl verarbeiteter Textbausteine (Tokens) pro Tag, ohne Personenbezug.
-        </Section>
+            <Section title="IP-Adresse">
+              Zum Schutz vor Missbrauch und zur Begrenzung der Kosten (Rate-Limiting) wird deine
+              IP-Adresse kurzzeitig verarbeitet — als Schlüssel für Zähler, die nach spätestens 24
+              Stunden ablaufen. Dafür nutzen wir Upstash (Redis). Zusätzlich zählen wir nur die
+              Gesamtzahl verarbeiteter Textbausteine (Tokens) pro Tag, ohne Personenbezug.
+            </Section>
 
-        <Section title="Hosting">
-          Die Website läuft bei Vercel. Wie bei jedem Webserver fallen dabei technisch notwendige
-          Verbindungsdaten (u. a. IP-Adresse) an.
-        </Section>
+            <Section title="Hosting">
+              Die Website läuft bei Vercel. Wie bei jedem Webserver fallen dabei technisch notwendige
+              Verbindungsdaten (u. a. IP-Adresse) an.
+            </Section>
 
-        <Section title="Fahrplandaten">
-          Für die Auskünfte fragen wir öffentliche bzw. inoffizielle Bahn-Schnittstellen ab. Dabei
-          werden keine personenbezogenen Daten von dir an diese Dienste übermittelt.
-        </Section>
+            <Section title="Fahrplandaten">
+              Für die Auskünfte fragen wir öffentliche bzw. inoffizielle Bahn-Schnittstellen ab. Dabei
+              werden keine personenbezogenen Daten von dir an diese Dienste übermittelt.
+            </Section>
 
-        <Section title="Fragen">
-          Fragen zum Datenschutz? Melde dich bei der WDC GmbH (siehe{' '}
-          <a
-            href="https://wdc-gmbh.ch/impressum/"
-            className="text-[var(--wbmz-red)] underline"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Impressum
-          </a>
-          ).
-        </Section>
+            <Section title="Fragen">
+              Fragen zum Datenschutz? Melde dich bei {owner.name} (siehe{' '}
+              <a
+                href={owner.contactUrl}
+                className="text-[var(--wbmz-red)] underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Impressum
+              </a>
+              ).
+            </Section>
 
-        <p className="mt-8 text-xs text-[var(--muted)]">Stand: Juli 2026.</p>
+            <p className="mt-8 text-xs text-[var(--muted)]">Stand: Juli 2026.</p>
+          </>
+        )}
 
         <p className="mt-6">
           <Link href="/" className="text-[var(--wbmz-red)] underline">

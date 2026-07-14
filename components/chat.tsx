@@ -7,7 +7,7 @@ import { Message } from './message';
 import { ExampleChips } from './example-chips';
 import { LANGS, STRINGS, detectLang, type Lang } from '@/lib/i18n';
 
-export function Chat() {
+export function Chat({ imprintUrl }: { imprintUrl?: string | null }) {
   const [lang, setLang] = useState<Lang>('de');
   const [input, setInput] = useState('');
   const { messages, sendMessage, status, error } = useChat({
@@ -149,20 +149,22 @@ export function Chat() {
               WDC
             </a>
           </p>
-          <p className="mt-1 text-center text-[11px] text-[var(--muted)]">
-            <a
-              href="https://wdc-gmbh.ch/impressum/"
-              className="underline hover:text-[var(--ink)]"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {s.imprint}
-            </a>{' '}
-            ·{' '}
-            <a href="/datenschutz" className="underline hover:text-[var(--ink)]">
-              {s.privacy}
-            </a>
-          </p>
+          {imprintUrl && (
+            <p className="mt-1 text-center text-[11px] text-[var(--muted)]">
+              <a
+                href={imprintUrl}
+                className="underline hover:text-[var(--ink)]"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {s.imprint}
+              </a>{' '}
+              ·{' '}
+              <a href="/datenschutz" className="underline hover:text-[var(--ink)]">
+                {s.privacy}
+              </a>
+            </p>
+          )}
         </form>
       </div>
     </div>
