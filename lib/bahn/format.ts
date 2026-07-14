@@ -7,6 +7,21 @@
 
 const TZ = 'Europe/Berlin';
 
+// Interpretiert einen (evtl. offset-losen) ISO-Zeitstring als Europe/Berlin —
+// UNABHÄNGIG von der Server-Zeitzone. Das Modell liefert Zeiten wie
+// "2026-07-14T11:53:00" ohne Offset; new Date() würde das in der Server-TZ lesen.
+// Auf Vercel läuft Node in UTC → „11:53" läge sonst 1–2 h daneben (DST-korrekt).
+export function parseBerlin(s: string): Date {
+  if (/([+-]\d{2}:?\d{2}|Z)$/.test(s)) return new Date(s); // hat bereits einen Offset
+  const asUtc = new Date(`${s}Z`);
+  if (Number.isNaN(asUtc.getTime())) return new Date(s);
+  const berlinWall = new Date(
+    `${asUtc.toLocaleString('sv-SE', { timeZone: TZ }).replace(' ', 'T')}Z`,
+  );
+  const offsetMs = berlinWall.getTime() - asUtc.getTime();
+  return new Date(asUtc.getTime() - offsetMs);
+}
+
 export function hhmm(iso: string | null | undefined): string | null {
   if (!iso) return null;
   return new Date(iso).toLocaleTimeString('de-DE', {

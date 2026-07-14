@@ -7,7 +7,7 @@
 // kann die Fehlermeldung dem Nutzer erklären.
 import { getClient, rotateClient } from './client';
 import { cached } from '../cache';
-import { formatStation, formatBoardEntry, hhmm, delayMin, remarkTexts, amenityTexts } from './format';
+import { formatStation, formatBoardEntry, hhmm, delayMin, remarkTexts, amenityTexts, parseBerlin } from './format';
 
 const API_ERROR = {
   error:
@@ -79,7 +79,7 @@ export async function getDepartures(stationId: string, opts: BoardOpts = {}) {
         c.departures(stationId, {
           duration: 60,
           results: 14,
-          when: opts.when ? new Date(opts.when) : undefined,
+          when: opts.when ? parseBerlin(opts.when) : undefined,
         }),
       );
       let entries = (res.departures ?? []).map((d: unknown) => formatBoardEntry(d as never, 'departure'));
@@ -106,7 +106,7 @@ export async function getArrivals(stationId: string, opts: BoardOpts = {}) {
         c.arrivals(stationId, {
           duration: 60,
           results: 14,
-          when: opts.when ? new Date(opts.when) : undefined,
+          when: opts.when ? parseBerlin(opts.when) : undefined,
         }),
       );
       let entries = (res.arrivals ?? []).map((d: unknown) => formatBoardEntry(d as never, 'arrival'));
@@ -153,8 +153,8 @@ export async function planJourney(fromId: string, toId: string, opts: JourneyOpt
     // einen Fehler aus. Deshalb genau EINEN Zeitparameter setzen (departure hat
     // Vorrang), sonst keinen.
     const journeyOpts: Record<string, unknown> = { results: 3, stopovers: false };
-    if (opts.departure) journeyOpts.departure = new Date(opts.departure);
-    else if (opts.arrival) journeyOpts.arrival = new Date(opts.arrival);
+    if (opts.departure) journeyOpts.departure = parseBerlin(opts.departure);
+    else if (opts.arrival) journeyOpts.arrival = parseBerlin(opts.arrival);
 
     const res = await withRetry('planJourney', (c) => c.journeys(fromId, toId, journeyOpts));
     const journeys = (res.journeys ?? []).map((raw: unknown) => {
