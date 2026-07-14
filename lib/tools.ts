@@ -25,7 +25,7 @@ export const bahnTools = {
 
   getDepartures: tool({
     description:
-      'Liefert die Abfahrtstafel eines Bahnhofs (nächste ~60 Minuten) mit Verspätungen, Gleisen und Ausfällen. Optional nach Richtung filtern.',
+      'Abfahrtstafel eines Bahnhofs (nächste ~60 Min) mit Verspätungen, Gleisen, Ausfällen. NUR verwenden, wenn KEIN Zielbahnhof genannt ist (z.B. „was fährt als Nächstes ab Köln?"). Wenn Start UND Ziel genannt sind — auch bei „wann fährt der Zug von X nach Y" oder „von X nach Y ab 16 Uhr" — NICHT dieses Tool nehmen, sondern planJourney (nur planJourney weiß, ob ein Zug ein bestimmtes Ziel/einen Zwischenhalt erreicht; die „Richtung" hier ist nur der Endbahnhof).',
     inputSchema: z.object({
       stationId: z.string().describe('Die id aus searchStations'),
       towards: z
@@ -53,7 +53,7 @@ export const bahnTools = {
 
   planJourney: tool({
     description:
-      'Sucht Zugverbindungen von A nach B inklusive Umstiegen, Verspätungen, Warnungen, Sparpreis (priceFrom, „ab X EUR") und Ausstattung pro Zug (amenities: Bordrestaurant, Fahrradmitnahme, WLAN …). Benötigt die Bahnhofs-IDs aus searchStations. Für eine bestimmte Reisezeit departure/arrival als ISO-Zeitpunkt setzen.',
+      'Sucht Zugverbindungen von A nach B inkl. Umstiegen, Verspätungen, Warnungen, Sparpreis (priceFrom) und Ausstattung (amenities). DAS Standard-Tool für JEDE Anfrage mit Start UND Ziel — auch wenn sie wie eine Abfahrtsfrage klingt („wann fährt der Zug von X nach Y", „nächster Zug von X nach Y ab 16 Uhr"). Findet auch Direktverbindungen, bei denen das Ziel nur ein Zwischenhalt ist. Benötigt die Bahnhofs-IDs aus searchStations; departure/arrival als ISO-Zeitpunkt für konkrete Zeiten.',
     inputSchema: z.object({
       fromId: z.string().describe('id des Start-Bahnhofs'),
       toId: z.string().describe('id des Ziel-Bahnhofs'),
