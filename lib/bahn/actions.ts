@@ -7,7 +7,7 @@
 // kann die Fehlermeldung dem Nutzer erklären.
 import { getClient, rotateClient } from './client';
 import { cached } from '../cache';
-import { formatStation, formatBoardEntry, hhmm, delayMin, remarkTexts, trainAmenities } from './format';
+import { formatStation, formatBoardEntry, hhmm, delayMin, remarkTexts, amenityTexts } from './format';
 
 const API_ERROR = {
   error:
@@ -181,7 +181,7 @@ export async function planJourney(fromId: string, toId: string, opts: JourneyOpt
           arr: hhmm(l.arrival),
           arrDelayMin: delayMin(l.arrivalDelay),
           tripId: l.tripId ?? null,
-          amenities: trainAmenities(l.remarks, l.line?.product),
+          amenities: amenityTexts(l.remarks),
         })),
         warnings: remarkTexts(j.remarks, 3),
       };
@@ -228,7 +228,7 @@ export async function trackTrain(tripId: string) {
       direction: trip.direction ?? '?',
       currentDelayMin: delayMin(trip.departureDelay ?? trip.arrivalDelay),
       cancelled: Boolean(trip.cancelled),
-      amenities: trainAmenities(trip.remarks, trip.line?.product),
+      amenities: amenityTexts(trip.remarks),
       stops: (trip.stopovers ?? []).map((s) => ({
         name: s.stop?.name ?? '?',
         arr: hhmm(s.arrival ?? s.plannedArrival),

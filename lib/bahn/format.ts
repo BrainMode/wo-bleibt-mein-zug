@@ -84,23 +84,6 @@ export function amenityTexts(remarks: unknown): string[] {
   return out;
 }
 
-// Die bahn.de-Daten führen WLAN NICHT als Ausstattungs-Code — obwohl alle ICE
-// kostenloses WLAN haben. Wir leiten es deterministisch aus dem Produkttyp ab
-// (echtes API-Feld line.product), statt es zu erfinden oder in den Prompt zu
-// schreiben. Nur wo es faktisch stimmt: ICE (nationalExpress).
-function wifiFromProduct(product?: string): string | null {
-  if (product === 'nationalExpress') return 'WLAN (kostenlos)';
-  return null;
-}
-
-/** Ausstattung eines Zug-Abschnitts: Remark-Merkmale + aus dem Produkttyp
- *  abgeleitetes WLAN (dedupliziert). */
-export function trainAmenities(remarks: unknown, product?: string): string[] {
-  const list = amenityTexts(remarks);
-  const wifi = wifiFromProduct(product);
-  if (wifi && !list.some((a) => /wlan/i.test(a))) list.push(wifi);
-  return list;
-}
 
 type StationLike = { id?: string; name?: string; products?: unknown };
 
