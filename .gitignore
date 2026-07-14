@@ -21,3 +21,8 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# Upstash/agent-skill Artefakte (nicht Teil der App)
+.agents/
+.claude/
+skills-lock.json

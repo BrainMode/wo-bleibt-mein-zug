@@ -14,7 +14,7 @@ export function Chat() {
     transport: new DefaultChatTransport({ api: '/api/chat' }),
   });
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const endRef = useRef<HTMLDivElement>(null);
   const busy = status === 'submitted' || status === 'streaming';
   const s = STRINGS[lang];
 
@@ -23,8 +23,10 @@ export function Chat() {
     setLang(detectLang());
   }, []);
 
+  // Nach neuer Nachricht / während des Streamens ans Ende scrollen. scrollIntoView
+  // bewegt den tatsächlichen Scroll-Container (inner Div ODER die Seite/Mobile).
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages, status]);
 
   function submit(text: string) {
@@ -66,7 +68,7 @@ export function Chat() {
 
       {/* Nachrichten */}
       <main className="mx-auto w-full max-w-3xl flex-1 px-4">
-        <div ref={scrollRef} className="h-full space-y-3 overflow-y-auto py-5">
+        <div className="h-full space-y-3 overflow-y-auto py-5">
           {empty ? (
             <div className="pt-6">
               <p className="mx-auto max-w-lg text-center text-[var(--muted)]">{s.emptyHint}</p>
@@ -89,6 +91,9 @@ export function Chat() {
               {s.error}
             </div>
           )}
+
+          {/* Scroll-Anker: sorgt dafür, dass neue Nachrichten sichtbar werden */}
+          <div ref={endRef} className="h-1 scroll-mb-24" />
         </div>
       </main>
 
