@@ -7,7 +7,7 @@
 // kann die Fehlermeldung dem Nutzer erklären.
 import { getClient, rotateClient } from './client';
 import { cached } from '../cache';
-import { formatStation, formatBoardEntry, hhmm, delayMin, remarkTexts, amenityTexts, parseBerlin } from './format';
+import { formatStation, formatBoardEntry, hhmm, delayMin, remarkTexts, amenityTexts, parseTimeInput } from './format';
 
 const API_ERROR = {
   error:
@@ -22,6 +22,31 @@ function logError(fn: string, err: unknown) {
 function isBlockError(err: unknown): boolean {
   const msg = (err instanceof Error ? err.message : String(err)).toLowerCase();
   return /ops_blocked|forbidden|403|452|unknown|timeout|network/.test(msg);
+}
+
+/** Klarer Hinweis bei unverständlicher Zeitangabe (statt irreführendem API-Fehler). */
+function timeError(value: string) {
+  return {
+    error: 'zeitformat',
+    hint: `Zeitangabe "${value}" nicht verstanden — bitte ISO-Format (YYYY-MM-DDTHH:mm) oder "HH:mm" verwenden.`,
+  };
+}
+
+const EMPTY_BOARD_HINT =
+  'Keine Fahrten gefunden — stimmt die stationId (bitte die id aus searchStations verwenden)? Bei Zeitangaben: Liegt der Zeitpunkt evtl. in der Vergangenheit?';
+
+/**
+ * Unterscheidet „db-vendo hat UNSERE Anfrage abgelehnt" (ungültige IDs,
+ * Zeitpunkt in der Vergangenheit …) von einem echten API-Ausfall. Block-/
+ * Netzfehler bleiben API_ERROR; alles andere ist fast immer eine ungültige
+ * Eingabe — dem Modell ehrlich sagen, statt „API nicht erreichbar".
+ */
+function invalidRequestOrNull(err: unknown) {
+  if (isBlockError(err)) return null;
+  return {
+    error: 'ungueltige_anfrage',
+    hint: 'Die Datenquelle hat die Anfrage abgelehnt — stationId (aus searchStations) und Zeitangabe prüfen (liegt der Zeitpunkt evtl. in der Vergangenheit?).',
+  };
 }
 
 type BahnClient = ReturnType<typeof getClient>;
@@ -48,12 +73,19 @@ async function withRetry<T>(fn: string, call: (c: BahnClient) => Promise<T>, att
 export type StationResult = { stations: ReturnType<typeof formatStation>[] } | typeof API_ERROR;
 
 /** Sucht Bahnhöfe/Haltestellen nach Name. Liefert IDs für alle anderen Tools. */
-export async function searchStations(query: string): Promise<StationResult> {
+export async function searchStations(query: string): Promise<StationResult | { error: string; hint: string }> {
+  const q = query.trim();
+  if (!q) {
+    return { error: 'leere_suche', hint: 'Bitte einen Bahnhofs- oder Ortsnamen angeben.' };
+  }
+  if (q.length > 120) {
+    return { error: 'zu_lang', hint: 'Suchbegriff ist zu lang — bitte nur den Bahnhofs-/Ortsnamen angeben.' };
+  }
   // Bahnhofs-IDs ändern sich praktisch nie → 24 h cachen.
-  return cached(`stations:${query.trim().toLowerCase()}`, 86_400, async () => {
+  return cached(`stations:${q.toLowerCase()}`, 86_400, async () => {
     try {
       const results = await withRetry('searchStations', (c) =>
-        c.locations(query, {
+        c.locations(q, {
           results: 6,
           stops: true,
           addresses: false,
@@ -77,6 +109,12 @@ function normLine(s: string): string {
 
 /** Abfahrtstafel eines Bahnhofs. `towards` filtert nach Richtung, `line` nach Linie/Zugnummer. */
 export async function getDepartures(stationId: string, opts: BoardOpts = {}) {
+  let when: Date | undefined;
+  if (opts.when) {
+    const d = parseTimeInput(opts.when);
+    if (!d) return timeError(opts.when);
+    when = d;
+  }
   const key = `dep:${stationId}:${opts.when ?? 'now'}:${opts.towards ?? ''}:${opts.line ?? ''}`;
   return cached(key, 30, async () => {
     try {
@@ -84,7 +122,7 @@ export async function getDepartures(stationId: string, opts: BoardOpts = {}) {
         c.departures(stationId, {
           duration: 60,
           results: 14,
-          when: opts.when ? parseBerlin(opts.when) : undefined,
+          when,
         }),
       );
       let entries = (res.departures ?? []).map((d: unknown) => formatBoardEntry(d as never, 'departure'));
@@ -102,16 +140,26 @@ export async function getDepartures(stationId: string, opts: BoardOpts = {}) {
         const filtered = exact.length > 0 ? exact : partial;
         if (filtered.length > 0) entries = filtered;
       }
-      return { station: stationId, departures: entries.slice(0, 10) };
+      return {
+        station: stationId,
+        departures: entries.slice(0, 10),
+        ...(entries.length === 0 ? { hint: EMPTY_BOARD_HINT } : {}),
+      };
     } catch (err) {
       logError('getDepartures', err);
-      return API_ERROR;
+      return invalidRequestOrNull(err) ?? API_ERROR;
     }
   });
 }
 
 /** Ankunftstafel eines Bahnhofs. */
 export async function getArrivals(stationId: string, opts: BoardOpts = {}) {
+  let when: Date | undefined;
+  if (opts.when) {
+    const d = parseTimeInput(opts.when);
+    if (!d) return timeError(opts.when);
+    when = d;
+  }
   const key = `arr:${stationId}:${opts.when ?? 'now'}:${opts.towards ?? ''}`;
   return cached(key, 30, async () => {
     try {
@@ -119,7 +167,7 @@ export async function getArrivals(stationId: string, opts: BoardOpts = {}) {
         c.arrivals(stationId, {
           duration: 60,
           results: 14,
-          when: opts.when ? parseBerlin(opts.when) : undefined,
+          when,
         }),
       );
       let entries = (res.arrivals ?? []).map((d: unknown) => formatBoardEntry(d as never, 'arrival'));
@@ -128,10 +176,14 @@ export async function getArrivals(stationId: string, opts: BoardOpts = {}) {
         const filtered = entries.filter((e) => e.origin?.toLowerCase().includes(needle));
         if (filtered.length > 0) entries = filtered;
       }
-      return { station: stationId, arrivals: entries.slice(0, 10) };
+      return {
+        station: stationId,
+        arrivals: entries.slice(0, 10),
+        ...(entries.length === 0 ? { hint: EMPTY_BOARD_HINT } : {}),
+      };
     } catch (err) {
       logError('getArrivals', err);
-      return API_ERROR;
+      return invalidRequestOrNull(err) ?? API_ERROR;
     }
   });
 }
@@ -156,6 +208,20 @@ type Leg = {
 
 /** Verbindungssuche A→B mit Umstiegen. */
 export async function planJourney(fromId: string, toId: string, opts: JourneyOpts = {}) {
+  if (fromId.trim() === toId.trim()) {
+    return { error: 'gleiche_station', hint: 'Start und Ziel sind derselbe Bahnhof.' };
+  }
+  let departure: Date | undefined;
+  let arrival: Date | undefined;
+  if (opts.departure) {
+    const d = parseTimeInput(opts.departure);
+    if (!d) return timeError(opts.departure);
+    departure = d;
+  } else if (opts.arrival) {
+    const d = parseTimeInput(opts.arrival);
+    if (!d) return timeError(opts.arrival);
+    arrival = d;
+  }
   const key = `journey:${fromId}:${toId}:${opts.departure ?? ''}:${opts.arrival ?? 'now'}`;
   // Konkrete Zeit/Datum → 5 Min cachen; "jetzt" → 45 s.
   const ttl = opts.departure || opts.arrival ? 300 : 45;
@@ -166,8 +232,8 @@ export async function planJourney(fromId: string, toId: string, opts: JourneyOpt
     // einen Fehler aus. Deshalb genau EINEN Zeitparameter setzen (departure hat
     // Vorrang), sonst keinen.
     const journeyOpts: Record<string, unknown> = { results: 3, stopovers: false };
-    if (opts.departure) journeyOpts.departure = parseBerlin(opts.departure);
-    else if (opts.arrival) journeyOpts.arrival = parseBerlin(opts.arrival);
+    if (departure) journeyOpts.departure = departure;
+    else if (arrival) journeyOpts.arrival = arrival;
 
     const res = await withRetry('planJourney', (c) => c.journeys(fromId, toId, journeyOpts));
     const journeys = (res.journeys ?? []).map((raw: unknown) => {
@@ -199,10 +265,15 @@ export async function planJourney(fromId: string, toId: string, opts: JourneyOpt
         warnings: remarkTexts(j.remarks, 3),
       };
     });
-    return { journeys };
+    return {
+      journeys,
+      ...(journeys.length === 0
+        ? { hint: 'Keine Verbindung gefunden — stimmen die Bahnhofs-IDs (beide aus searchStations)?' }
+        : {}),
+    };
   } catch (err) {
     logError('planJourney', err);
-    return API_ERROR;
+    return invalidRequestOrNull(err) ?? API_ERROR;
   }
   });
 }
@@ -220,8 +291,16 @@ type Stopover = {
   cancelled?: boolean;
 };
 
+const TRIP_NOT_FOUND = {
+  error: 'nicht_gefunden',
+  hint: 'Dieser Zuglauf wurde nicht gefunden — die tripId ist vermutlich abgelaufen oder ungültig. Hole eine frische tripId über getDepartures oder planJourney.',
+};
+
 /** Live-Fahrtverlauf eines konkreten Zuges (Kern-Feature: „Wo bleibt mein Zug?"). */
 export async function trackTrain(tripId: string) {
+  // Erkennbar kaputte tripIds gar nicht erst an die API schicken (spart auch
+  // die Cipher-Retry-Schleife): echte db-vendo-tripIds sind lange Token.
+  if (tripId.trim().length < 12) return TRIP_NOT_FOUND;
   // Live-Daten, aber 20 s Cache fängt Mehrfachanfragen ohne spürbaren Frischeverlust.
   return cached(`trip:${tripId}`, 20, async () => {
   try {
@@ -255,6 +334,9 @@ export async function trackTrain(tripId: string) {
     };
   } catch (err) {
     logError('trackTrain', err);
+    // Ungültige/abgelaufene tripId von API-Ausfall unterscheiden — sonst
+    // erzählt das Modell fälschlich von einer „nicht erreichbaren Datenquelle".
+    if (!isBlockError(err)) return TRIP_NOT_FOUND;
     return API_ERROR;
   }
   });
@@ -262,11 +344,15 @@ export async function trackTrain(tripId: string) {
 
 /** Findet Bahnhöfe/Haltestellen im Umkreis eines Ortes/einer Adresse. */
 export async function nearbyStations(place: string) {
-  return cached(`nearby:${place.trim().toLowerCase()}`, 86_400, async () => {
+  const p = place.trim();
+  if (!p) {
+    return { error: 'leere_suche', hint: 'Bitte einen Ort oder eine Adresse angeben.' };
+  }
+  return cached(`nearby:${p.toLowerCase()}`, 86_400, async () => {
     try {
       // 1) Ort/Adresse geocoden (locations liefert lat/lon, auch für Adressen/POIs).
       const geo = (await withRetry('nearbyStations:geo', (c) =>
-        c.locations(place, { results: 1, stops: true, addresses: true, poi: true }),
+        c.locations(p, { results: 1, stops: true, addresses: true, poi: true }),
       )) as Array<{ location?: { latitude?: number; longitude?: number }; latitude?: number; longitude?: number }>;
       const first = geo[0];
       const lat = first?.location?.latitude ?? first?.latitude;
